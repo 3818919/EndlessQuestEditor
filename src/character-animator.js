@@ -6,18 +6,22 @@ class CharacterAnimator {
     this.animationFrame = null;
     this.currentFrame = 0;
     this.frameTimer = 0;
+    this.armorFrame = 0;
     this.state = 'standing'; // standing, walking, attacking
     this.direction = 'down'; // down, up, left, right
+    this.zoomLevel = 1; // Default zoom level (1x, 2x, 3x, 4x)
+    this.gender = 1; // 0 = female, 1 = male
     
     // GFX file numbers
     this.GFX_SKIN = 8;
     this.GFX_MALE_ARMOR = 13;
+    this.GFX_FEMALE_ARMOR = 14;
     this.GFX_MALE_WEAPONS = 17;
     this.GFX_MALE_BACK = 19;
     
     // Animation timing (in frames)
-    this.WALK_FRAME_DELAY = 9;
-    this.ATTACK_FRAME_DELAY = 12;
+    this.WALK_FRAME_DELAY = 18;  // Doubled from 9
+    this.ATTACK_FRAME_DELAY = 24; // Doubled from 12
     
     // Loaded sprites
     this.sprites = {
@@ -64,6 +68,17 @@ class CharacterAnimator {
     this.ctx.imageSmoothingEnabled = false; // Pixel-perfect rendering
   }
   
+  setZoom(level) {
+    this.zoomLevel = Math.max(1, Math.min(4, level)); // Clamp between 1x and 4x
+    if (!this.animationFrame) {
+      this.render(); // Re-render if not animating
+    }
+  }
+  
+  getZoom() {
+    return this.zoomLevel;
+  }
+  
   async loadGFXFile(gfxFolder, gfxNumber) {
     try {
       const result = await window.electronAPI.readGFX(gfxFolder, gfxNumber);
@@ -78,10 +93,13 @@ class CharacterAnimator {
     }
   }
   
-  async loadCharacterSprites(gfxFolder, itemType, graphicId) {
-    console.log('Loading character sprites:', { gfxFolder, itemType, graphicId });
+  async loadCharacterSprites(gfxFolder, itemType, graphicId, gender = 1) {
+    console.log('Loading character sprites:', { gfxFolder, itemType, graphicId, gender });
     
-    // Always load skin (gender = 1 for male)
+    // Store gender for use in sprite rendering
+    this.gender = gender;
+    
+    // Always load skin
     const skinData = await this.loadGFXFile(gfxFolder, this.GFX_SKIN);
     if (skinData) {
       console.log('Loaded skin data, parsing sprites...');
@@ -94,7 +112,7 @@ class CharacterAnimator {
     // Load equipment based on item type
     if (itemType === this.ITEM_TYPE.ARMOR) {
       console.log('Loading armor sprite...');
-      await this.loadArmorSprite(gfxFolder, graphicId);
+      await this.loadArmorSprite(gfxFolder, graphicId, gender);
       this.state = 'walking';
     } else if (itemType === this.ITEM_TYPE.WEAPON) {
       console.log('Loading weapon sprite...');
@@ -156,43 +174,74 @@ class CharacterAnimator {
     return sprites;
   }
   
-  async loadArmorSprite(gfxFolder, graphicId) {
+  async loadArmorSprite(gfxFolder, graphicId, gender = 1) {
     if (graphicId === 0) {
       this.sprites.armor = null;
       return;
     }
     
-    const armorData = await this.loadGFXFile(gfxFolder, this.GFX_MALE_ARMOR);
-    if (!armorData) return;
+    // Load appropriate armor GFX file based on gender
+    const armorGfxFile = gender === 0 ? this.GFX_FEMALE_ARMOR : this.GFX_MALE_ARMOR;
+    const armorData = await this.loadGFXFile(gfxFolder, armorGfxFile);
+    if (!armorData) {
+      console.error(`Failed to load armor GFX file ${armorGfxFile}`);
+      return;
+    }
     
     // Armor graphics: base + sprite type offset
-    // For walking: WalkFrame1=3, WalkFrame2=4, WalkFrame3=5, WalkFrame4=6
     const baseGraphic = this.getBaseArmorGraphic(graphicId);
+    console.log(`Loading armor graphic ${graphicId}, base: ${baseGraphic}, gender: ${gender === 0 ? 'female' : 'male'}`);
     
     this.sprites.armor = {
       standing: null,
-      walkFrames: []
+      walkFrames: [],
+      attackFrames: []
     };
     
     // Load standing sprite (offset 1, +100 for PE resource ID)
-    const standingData = GFXLoader.extractBitmapByID(armorData, baseGraphic + 1 + 100);
+    const standingResourceId = baseGraphic + 1 + 100;
+    console.log(`Attempting to load armor standing from resource ${standingResourceId}`);
+    const standingData = GFXLoader.extractBitmapByID(armorData, standingResourceId);
     if (standingData) {
       this.sprites.armor.standing = await this.createImageFromData(standingData);
-      console.log('Loaded armor standing sprite');
+      console.log('✓ Loaded armor standing sprite, dimensions:', this.sprites.armor.standing.width, 'x', this.sprites.armor.standing.height);
     } else {
-      console.warn('Failed to load armor standing sprite (resource', baseGraphic + 1 + 100, ')');
-    }
-    
-    // Load walk frames (offsets 3-6 for down direction, +100 for PE resource ID)
-    for (let frame = 0; frame < 4; frame++) {
-      const frameData = GFXLoader.extractBitmapByID(armorData, baseGraphic + 3 + frame + 100);
-      if (frameData) {
-        this.sprites.armor.walkFrames[frame] = await this.createImageFromData(frameData);
-        console.log('Loaded armor walk frame', frame);
-      } else {
-        console.warn('Failed to load armor walk frame', frame, '(resource', baseGraphic + 3 + frame + 100, ')');
+      console.warn('✗ Failed to load armor standing sprite (resource', standingResourceId, ')');
+      // Try scanning nearby resource IDs to find available sprites
+      console.log('Scanning for available armor sprites...');
+      for (let offset = 0; offset < 50; offset++) {
+        const testId = baseGraphic + offset + 100;
+        const testData = GFXLoader.extractBitmapByID(armorData, testId);
+        if (testData) {
+          console.log(`Found armor sprite at offset ${offset} (resource ${testId})`);
+        }
       }
     }
+    
+    // Try loading walk frames for DOWN direction (offsets 3, 4, 5)
+    // EO walking animation uses 3 walk frames (WalkFrame1, WalkFrame2, WalkFrame3)
+    let framesLoaded = 0;
+    for (let frame = 0; frame < 3; frame++) {
+      const resourceId = baseGraphic + 3 + frame + 100;
+      const frameData = GFXLoader.extractBitmapByID(armorData, resourceId);
+      if (frameData) {
+        this.sprites.armor.walkFrames[frame] = await this.createImageFromData(frameData);
+        console.log(`✓ Loaded armor walk frame ${frame} (WalkFrame${frame + 1}) from offset ${3 + frame}`);
+        framesLoaded++;
+      }
+    }
+    
+    // Load attack frames (PunchFrame1=7, PunchFrame2=8)
+    for (let frame = 0; frame < 2; frame++) {
+      const resourceId = baseGraphic + 7 + frame + 100;
+      const frameData = GFXLoader.extractBitmapByID(armorData, resourceId);
+      if (frameData) {
+        this.sprites.armor.attackFrames[frame] = await this.createImageFromData(frameData);
+        console.log(`✓ Loaded armor attack frame ${frame} from offset ${7 + frame}`);
+      }
+    }
+    
+    console.log('Armor loading complete. Walk frames available:', framesLoaded, 'Attack frames available:', this.sprites.armor.attackFrames.length);
   }
   
   async loadWeaponSprite(gfxFolder, graphicId) {
@@ -304,12 +353,46 @@ class CharacterAnimator {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
         
-        // Make black pixels transparent
+        // DEBUG: Check what pixel values we actually have
+        let pixelTypes = { black: 0, magenta: 0, other: 0 };
+        let sampleOther = [];
+        
         for (let i = 0; i < data.length; i += 4) {
-          if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0) {
-            data[i + 3] = 0; // Set alpha to 0
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          
+          if (r === 0 && g === 0 && b === 0) {
+            pixelTypes.black++;
+          } else if (r === 255 && g === 0 && b === 255) {
+            pixelTypes.magenta++;
+          } else {
+            pixelTypes.other++;
+            if (sampleOther.length < 3) {
+              sampleOther.push(`RGB(${r},${g},${b})`);
+            }
           }
         }
+        
+        console.log(`Pixel analysis: ${pixelTypes.black} black, ${pixelTypes.magenta} magenta, ${pixelTypes.other} other`, sampleOther);
+        
+        // Make black pixels transparent
+        let transparentCount = 0;
+        let opaqueCount = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          
+          if (r === 0 && g === 0 && b === 0) {
+            data[i + 3] = 0; // Set alpha to 0
+            transparentCount++;
+          } else if (data[i + 3] > 0) {
+            opaqueCount++;
+          }
+        }
+        
+        console.log(`Image processed: ${opaqueCount} opaque pixels, ${transparentCount} black pixels made transparent`);
         
         ctx.putImageData(imageData, 0, 0);
         
@@ -331,6 +414,7 @@ class CharacterAnimator {
     
     console.log('Starting animation with state:', this.state);
     this.currentFrame = 0;
+    this.armorFrame = 0;
     this.frameTimer = 0;
     this.animate();
   }
@@ -349,12 +433,16 @@ class CharacterAnimator {
     if (this.state === 'walking') {
       if (this.frameTimer >= this.WALK_FRAME_DELAY) {
         this.frameTimer = 0;
-        this.currentFrame = (this.currentFrame + 1) % 4;
+        // Skin uses 4 frames (0-3), armor uses 3 frames (0-2)
+        // Cycle through frames: 0, 1, 2, 0, 1, 2...
+        this.currentFrame = (this.currentFrame + 1) % 3;
+        this.armorFrame = this.currentFrame;
       }
     } else if (this.state === 'attacking') {
       if (this.frameTimer >= this.ATTACK_FRAME_DELAY) {
         this.frameTimer = 0;
         this.currentFrame = (this.currentFrame + 1) % 2;
+        this.armorFrame = this.currentFrame;
       }
     }
     
@@ -368,7 +456,8 @@ class CharacterAnimator {
       return;
     }
     
-    // Clear canvas with a background color for visibility
+    // Clear canvas completely with a background color for visibility
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.fillStyle = '#2d2d30';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
@@ -387,7 +476,7 @@ class CharacterAnimator {
     // Debug: Show state and frame
     this.ctx.fillStyle = '#cccccc';
     this.ctx.font = '12px monospace';
-    this.ctx.fillText(`State: ${this.state} | Frame: ${this.currentFrame}`, 10, 20);
+    this.ctx.fillText(`State: ${this.state} | Frame: ${this.currentFrame} | Zoom: ${this.zoomLevel}x`, 10, 20);
     
     // Show if no sprites loaded
     if (!this.sprites.skin) {
@@ -400,14 +489,14 @@ class CharacterAnimator {
   }
   
   drawStanding(centerX, centerY) {
-    // Draw skin standing
+    // Draw skin standing (use stored gender)
     if (this.sprites.skin?.standing) {
-      this.drawSkinSprite(this.sprites.skin.standing, centerX, centerY, 0, 0, 1);
+      this.drawSkinSprite(this.sprites.skin.standing, centerX, centerY, 0, this.gender, 1);
     }
     
-    // Draw armor standing
+    // Draw armor standing (raised by 4px)
     if (this.sprites.armor?.standing) {
-      this.drawSprite(this.sprites.armor.standing, centerX, centerY);
+      this.drawSprite(this.sprites.armor.standing, centerX, centerY - 4);
     }
     
     // Draw weapon standing
@@ -422,41 +511,66 @@ class CharacterAnimator {
   }
   
   drawWalking(centerX, centerY) {
-    // Draw skin walking frame
+    // Layer 1: Draw skin walking frame (base, use stored gender)
     if (this.sprites.skin?.walking) {
-      this.drawSkinSprite(this.sprites.skin.walking, centerX, centerY, this.currentFrame, 1, 16);
+      this.drawSkinSprite(this.sprites.skin.walking, centerX, centerY, this.currentFrame, this.gender, 16);
     }
     
-    // Draw armor walking frame
+    // Layer 2: Draw armor walking frame (on top of skin, raised by additional 4px to -8 total)
+    // Use walkFrames directly: frame 0 = walkFrames[0], frame 1 = walkFrames[1], etc.
+    let armorSprite = null;
     if (this.sprites.armor?.walkFrames && this.sprites.armor.walkFrames[this.currentFrame]) {
-      this.drawSprite(this.sprites.armor.walkFrames[this.currentFrame], centerX, centerY);
+      armorSprite = this.sprites.armor.walkFrames[this.currentFrame];
+    } else if (this.sprites.armor?.standing) {
+      // Fallback to standing frame
+      armorSprite = this.sprites.armor.standing;
     }
     
-    // Draw weapon walking frame (weapons also have walk frames)
+    if (armorSprite) {
+      this.drawSprite(armorSprite, centerX + 1, centerY - 8);
+    }
+    
+    // Layer 3: Draw weapon (on top of armor)
     if (this.sprites.weapon?.standing) {
       this.drawSprite(this.sprites.weapon.standing, centerX, centerY);
+    }
+    
+    // Layer 4: Draw back item if present
+    if (this.sprites.back?.standing) {
+      this.drawSprite(this.sprites.back.standing, centerX, centerY);
     }
   }
   
   drawAttacking(centerX, centerY) {
-    // Draw skin attacking frame
-    if (this.sprites.skin?.attacking) {
-      this.drawSkinSprite(this.sprites.skin.attacking, centerX, centerY, this.currentFrame, 2, 8);
-    }
-    
-    // Draw armor (usually standing during attack)
-    if (this.sprites.armor?.standing) {
-      this.drawSprite(this.sprites.armor.standing, centerX, centerY);
-    }
-    
-    // Draw weapon attacking frame
-    if (this.sprites.weapon?.attackFrames && this.sprites.weapon.attackFrames[this.currentFrame]) {
-      this.drawSprite(this.sprites.weapon.attackFrames[this.currentFrame], centerX, centerY);
-    }
-    
-    // Draw back item attacking frame
+    // Layer 1: Draw back item first (behind character)
     if (this.sprites.back?.attackFrames && this.sprites.back.attackFrames[0]) {
       this.drawSprite(this.sprites.back.attackFrames[0], centerX, centerY);
+    } else if (this.sprites.back?.standing) {
+      this.drawSprite(this.sprites.back.standing, centerX, centerY);
+    }
+    
+    // Layer 2: Draw skin attacking frame (use stored gender)
+    if (this.sprites.skin?.attacking) {
+      this.drawSkinSprite(this.sprites.skin.attacking, centerX, centerY, this.currentFrame, this.gender, 8);
+    }
+    
+    // Layer 3: Draw armor attack frame on top of skin (raised by 4px)
+    if (this.sprites.armor?.attackFrames && this.sprites.armor.attackFrames[this.armorFrame]) {
+      this.drawSprite(this.sprites.armor.attackFrames[this.armorFrame], centerX, centerY - 4);
+    } else if (this.sprites.armor?.standing) {
+      // Fallback to standing frame if attack frames not available
+      this.drawSprite(this.sprites.armor.standing, centerX, centerY - 4);
+    }
+    
+    // Layer 4: Draw weapon attacking frame (on top of everything)
+    // Swap weapon frames (0→1, 1→0) to align with character hands
+    // Move weapon 10 pixels to the left when attacking
+    const weaponFrame = 1 - this.currentFrame;
+    if (this.sprites.weapon?.attackFrames && this.sprites.weapon.attackFrames[weaponFrame]) {
+      this.drawSprite(this.sprites.weapon.attackFrames[weaponFrame], centerX - 8, centerY + 2);
+    } else if (this.sprites.weapon?.standing) {
+      // Fallback to standing frame
+      this.drawSprite(this.sprites.weapon.standing, centerX - 8, centerY + 2);
     }
   }
   
@@ -475,24 +589,34 @@ class CharacterAnimator {
     const directionMap = { down: 0, left: 1, up: 2, right: 3 };
     const dirOffset = directionMap[this.direction] || 0;
     
-    const srcX = (gender * (cols / 2) + dirOffset + frame * 4) * frameWidth;
+    // For walking: each direction has 4 frames laid out horizontally
+    // Column layout: male_down_frame0, male_down_frame1, male_down_frame2, male_down_frame3, ...
+    const srcX = (gender * (cols / 2) + dirOffset * 4 + frame) * frameWidth;
     const srcY = 0; // Race 0
     
     this.ctx.drawImage(
       img,
       srcX, srcY, frameWidth, frameHeight,
-      centerX - frameWidth / 2, centerY - frameHeight / 2, frameWidth, frameHeight
+      centerX - (frameWidth * this.zoomLevel) / 2, 
+      centerY - (frameHeight * this.zoomLevel) / 2, 
+      frameWidth * this.zoomLevel, 
+      frameHeight * this.zoomLevel
     );
   }
   
-  drawSprite(img, centerX, centerY) {
+  drawSprite(img, centerX, centerY, offsetX = 0, offsetY = 0) {
     if (!img) return;
     
-    this.ctx.drawImage(
-      img,
-      centerX - img.width / 2,
-      centerY - img.height / 2
-    );
+    const scaledWidth = img.width * this.zoomLevel;
+    const scaledHeight = img.height * this.zoomLevel;
+    const x = centerX - scaledWidth / 2 + (offsetX * this.zoomLevel);
+    const y = centerY - scaledHeight / 2 + (offsetY * this.zoomLevel);
+    
+    // Debug: draw a red rectangle to show where sprite would be drawn
+    // this.ctx.strokeStyle = 'red';
+    // this.ctx.strokeRect(x, y, scaledWidth, scaledHeight);
+    
+    this.ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
   }
   
   clear() {

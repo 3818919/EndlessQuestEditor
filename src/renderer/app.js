@@ -48,6 +48,7 @@ const ItemTypes = {
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
   initializeEventListeners();
+  loadSavedPreferences();
   updateUI();
 });
 
@@ -85,6 +86,51 @@ function initializeEventListeners() {
   AppState.animator = new CharacterAnimator();
 }
 
+// Load saved preferences from localStorage
+async function loadSavedPreferences() {
+  try {
+    // Load saved GFX folder path
+    const savedGfxFolder = localStorage.getItem('gfxFolderPath');
+    if (savedGfxFolder) {
+      AppState.gfxFolder = savedGfxFolder;
+      
+      // Verify the folder still exists and has GFX files
+      const result = await window.electronAPI.listGFXFiles(savedGfxFolder);
+      if (result.success) {
+        setStatus(`Loaded saved GFX folder - ${result.files.length} GFX files found`);
+        document.getElementById('gfxFileInfo').textContent = 
+          `${result.files.length} GFX files available`;
+      } else {
+        // Folder no longer exists or is invalid
+        AppState.gfxFolder = null;
+        localStorage.removeItem('gfxFolderPath');
+      }
+    }
+    
+    // Load saved pub file path
+    const savedPubFile = localStorage.getItem('lastPubFilePath');
+    if (savedPubFile) {
+      const result = await window.electronAPI.readFile(savedPubFile);
+      if (result.success) {
+        // Parse EIF file
+        const fileData = new Uint8Array(result.data);
+        AppState.eifData = EIFParser.parse(fileData);
+        AppState.filePath = savedPubFile;
+        AppState.currentFile = savedPubFile.split(/[\\/]/).pop();
+        AppState.isDirty = false;
+        
+        setStatus(`Auto-loaded ${AppState.currentFile} - ${AppState.eifData.records.length} items`);
+        renderItemList();
+      } else {
+        // File no longer exists
+        localStorage.removeItem('lastPubFilePath');
+      }
+    }
+  } catch (error) {
+    console.error('Error loading saved preferences:', error);
+  }
+}
+
 // File Operations
 async function openFile() {
   try {
@@ -110,6 +156,9 @@ async function openFile() {
     AppState.filePath = filePath;
     AppState.currentFile = filePath.split(/[\\/]/).pop();
     AppState.isDirty = false;
+    
+    // Save to localStorage
+    localStorage.setItem('lastPubFilePath', filePath);
     
     setStatus(`Loaded ${AppState.currentFile} - ${AppState.eifData.records.length} items`);
     updateUI();
@@ -176,6 +225,9 @@ async function openGFXFolder() {
     
     AppState.gfxFolder = folderPath;
     AppState.gfxCache.clear();
+    
+    // Save to localStorage
+    localStorage.setItem('gfxFolderPath', folderPath);
     
     // Test loading GFX files
     const result = await window.electronAPI.listGFXFiles(folderPath);
@@ -489,7 +541,10 @@ function renderEditor() {
         </div>
         <div class="form-group">
           <label>Gender</label>
-          <input type="number" id="itemGender" value="${record.properties.gender}" min="0" max="255">
+          <select id="itemGender">
+            <option value="0" ${record.properties.gender === 0 ? 'selected' : ''}>Female</option>
+            <option value="1" ${record.properties.gender === 1 ? 'selected' : ''}>Male</option>
+          </select>
         </div>
       </div>
       <div class="form-row">
@@ -581,6 +636,39 @@ function filterItems(e) {
 }
 
 // GFX Preview
+/**
+ * Process image to make RGB(0,0,0) transparent
+ */
+function makeBlackTransparent(dataUrl, callback) {
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    
+    // Draw image to canvas
+    ctx.drawImage(img, 0, 0);
+    
+    // Get image data and make RGB(0,0,0) transparent
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      // Check if pixel is pure black (RGB 0,0,0)
+      if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0) {
+        data[i + 3] = 0; // Set alpha to 0 (transparent)
+      }
+    }
+    
+    // Put the modified image data back
+    ctx.putImageData(imageData, 0, 0);
+    
+    callback(canvas);
+  };
+  img.src = dataUrl;
+}
+
 async function loadGFXPreview(graphicId) {
   const previewContent = document.getElementById('previewContent');
   const gfxInput = document.getElementById('gfxInput');
@@ -659,12 +747,75 @@ async function loadAnimatedPreview(graphicId) {
     // Show loading state
     previewContent.innerHTML = '<div class="empty-state"><p>Loading animation...</p></div>';
     
+    // Create container for canvas and zoom controls
+    const container = document.createElement('div');
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.alignItems = 'center';
+    container.style.gap = '10px';
+    
+    // Create zoom controls
+    const zoomControls = document.createElement('div');
+    zoomControls.style.display = 'flex';
+    zoomControls.style.gap = '10px';
+    zoomControls.style.alignItems = 'center';
+    
+    const zoomLabel = document.createElement('span');
+    zoomLabel.textContent = 'Zoom:';
+    zoomLabel.style.color = '#cccccc';
+    zoomLabel.style.fontSize = '14px';
+    
+    const zoomOutBtn = document.createElement('button');
+    zoomOutBtn.textContent = '−';
+    zoomOutBtn.className = 'btn btn-secondary';
+    zoomOutBtn.style.padding = '4px 12px';
+    zoomOutBtn.onclick = () => {
+      const currentZoom = AppState.animator.getZoom();
+      if (currentZoom > 1) {
+        AppState.animator.setZoom(currentZoom - 1);
+        updateZoomDisplay();
+      }
+    };
+    
+    const zoomDisplay = document.createElement('span');
+    zoomDisplay.id = 'zoomDisplay';
+    zoomDisplay.style.color = '#cccccc';
+    zoomDisplay.style.fontSize = '14px';
+    zoomDisplay.style.minWidth = '30px';
+    zoomDisplay.style.textAlign = 'center';
+    zoomDisplay.textContent = '1x';
+    
+    const zoomInBtn = document.createElement('button');
+    zoomInBtn.textContent = '+';
+    zoomInBtn.className = 'btn btn-secondary';
+    zoomInBtn.style.padding = '4px 12px';
+    zoomInBtn.onclick = () => {
+      const currentZoom = AppState.animator.getZoom();
+      if (currentZoom < 4) {
+        AppState.animator.setZoom(currentZoom + 1);
+        updateZoomDisplay();
+      }
+    };
+    
+    const updateZoomDisplay = () => {
+      zoomDisplay.textContent = `${AppState.animator.getZoom()}x`;
+    };
+    
+    zoomControls.appendChild(zoomLabel);
+    zoomControls.appendChild(zoomOutBtn);
+    zoomControls.appendChild(zoomDisplay);
+    zoomControls.appendChild(zoomInBtn);
+    
     // Create canvas
     const canvas = document.createElement('canvas');
     canvas.width = 400;
     canvas.height = 400;
+    
+    container.appendChild(zoomControls);
+    container.appendChild(canvas);
+    
     previewContent.innerHTML = '';
-    previewContent.appendChild(canvas);
+    previewContent.appendChild(container);
     
     // Initialize animator with canvas
     AppState.animator.initialize(canvas);
@@ -673,14 +824,23 @@ async function loadAnimatedPreview(graphicId) {
       id: AppState.selectedItemId,
       name: record.name,
       type: record.properties.type,
-      graphicId: graphicId
+      graphic: graphicId,
+      dollGraphic: record.properties.dollGraphic
     });
     
     // Load character sprites based on item type
+    // Use dollGraphic for equipment (armor/weapons), graphic for items
+    const spriteGraphicId = record.properties.dollGraphic || graphicId;
+    
+    // Read gender from dropdown (current UI value) rather than saved record
+    const genderSelect = document.getElementById('itemGender');
+    const currentGender = genderSelect ? parseInt(genderSelect.value) : (record.properties.gender || 1);
+    
     await AppState.animator.loadCharacterSprites(
       AppState.gfxFolder,
       record.properties.type,
-      graphicId
+      spriteGraphicId,
+      currentGender
     );
     
     // Start animation
@@ -694,7 +854,12 @@ async function loadAnimatedPreview(graphicId) {
 
 function displayGFX(dataUrl) {
   const previewContent = document.getElementById('previewContent');
-  previewContent.innerHTML = `<img src="${dataUrl}" alt="Item Graphic">`;
+  previewContent.innerHTML = '<div class="empty-state"><p>Loading...</p></div>';
+  
+  makeBlackTransparent(dataUrl, (canvas) => {
+    previewContent.innerHTML = '';
+    previewContent.appendChild(canvas);
+  });
 }
 
 function clearGFXPreview() {
@@ -763,10 +928,19 @@ async function openGFXBrowser() {
       
       const item = document.createElement('div');
       item.className = 'gfx-item';
-      item.innerHTML = `
-        <img src="${dataUrl}" alt="GFX ${bitmap.graphicId}">
-        <div class="gfx-item-id">ID: ${bitmap.graphicId}</div>
-      `;
+      
+      const idLabel = document.createElement('div');
+      idLabel.className = 'gfx-item-id';
+      idLabel.textContent = `ID: ${bitmap.graphicId}`;
+      
+      // Process image for transparency
+      makeBlackTransparent(dataUrl, (canvas) => {
+        // Scale canvas to thumbnail size if needed
+        canvas.style.maxWidth = '100%';
+        canvas.style.maxHeight = '100%';
+        item.appendChild(canvas);
+        item.appendChild(idLabel);
+      });
       
       item.addEventListener('click', () => {
         selectGFX(bitmap.graphicId);
