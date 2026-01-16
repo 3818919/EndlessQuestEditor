@@ -1,1 +1,0 @@
-../gfx-loader.js

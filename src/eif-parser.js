@@ -361,14 +361,5 @@ class EIFParser {
   }
 }
 
-// Export for use in renderer
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { EIFParser, EIFRecord, NumberEncoder, CRC32 };
-}
-// Also expose to window for browser usage
-if (typeof window !== 'undefined') {
-  window.EIFParser = EIFParser;
-  window.EIFRecord = EIFRecord;
-  window.NumberEncoder = NumberEncoder;
-  window.CRC32 = CRC32;
-}
+// ES6 exports
+export { EIFParser, EIFRecord, NumberEncoder, CRC32 };

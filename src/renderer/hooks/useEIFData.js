@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
+import { EIFParser, EIFRecord } from '../../eif-parser.js';
 
-const EIFParser = window.EIFParser;
+// Check if running in Electron
+const isElectron = typeof window !== 'undefined' && window.electronAPI;
 
 export function useEIFData() {
   const [eifData, setEifData] = useState({ version: 1, items: {} });
@@ -12,20 +14,43 @@ export function useEIFData() {
 
   const loadFile = useCallback(async () => {
     try {
-      const filePath = await window.electronAPI.openFile([
-        { name: 'Item Files', extensions: ['eif'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]);
-      
-      if (!filePath) return;
+      let fileData;
+      let filePath;
 
-      const response = await window.electronAPI.readFile(filePath);
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to read file');
+      if (isElectron) {
+        // Electron: Use native file dialog
+        filePath = await window.electronAPI.openFile([
+          { name: 'Item Files', extensions: ['eif'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]);
+        
+        if (!filePath) return;
+
+        const response = await window.electronAPI.readFile(filePath);
+        
+        if (!response.success) {
+          throw new Error(response.error || 'Failed to read file');
+        }
+        
+        fileData = new Uint8Array(response.data);
+      } else {
+        // Browser: Use HTML file input
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.eif';
+        
+        const file = await new Promise((resolve) => {
+          input.onchange = (e) => resolve(e.target.files[0]);
+          input.click();
+        });
+        
+        if (!file) return;
+        
+        filePath = file.name;
+        const arrayBuffer = await file.arrayBuffer();
+        fileData = new Uint8Array(arrayBuffer);
       }
       
-      const fileData = new Uint8Array(response.data);
       const parsed = EIFParser.parse(fileData);
       
       console.log('Parsed EIF data:', parsed);
@@ -96,6 +121,12 @@ export function useEIFData() {
   }, []);
 
   const loadFileFromPath = useCallback(async (filePath) => {
+    // Only works in Electron
+    if (!isElectron) {
+      console.log('Auto-load not available in browser mode');
+      return;
+    }
+
     try {
       if (!filePath) return;
 
@@ -200,7 +231,7 @@ export function useEIFData() {
       // Convert flattened items back to EIFRecord format for serialization
       const records = Object.values(eifData.items).map(item => {
         // Use the stored _record if available, otherwise create new
-        const record = item._record || new window.EIFRecord(item.id, item.name);
+        const record = item._record || new EIFRecord(item.id, item.name);
         
         // Update record properties from flattened item
         record.name = item.name;
@@ -244,8 +275,22 @@ export function useEIFData() {
       };
       
       const fileData = EIFParser.serialize(dataToSave);
-      await window.electronAPI.writeFile(currentFile, fileData);
-      alert('File saved successfully!');
+      
+      if (isElectron) {
+        // Electron: Save using native file API
+        await window.electronAPI.writeFile(currentFile, fileData);
+        alert('File saved successfully!');
+      } else {
+        // Browser: Download as file
+        const blob = new Blob([fileData], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = currentFile;
+        a.click();
+        URL.revokeObjectURL(url);
+        alert('File downloaded successfully!');
+      }
     } catch (error) {
       console.error('Error saving EIF file:', error);
       alert('Error saving EIF file: ' + error.message);

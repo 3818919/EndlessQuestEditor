@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import ItemPreview from './ItemPreview';
 
+// Check if running in Electron
+const isElectron = typeof window !== 'undefined' && window.electronAPI;
+
 const ITEM_TYPES = {
-  1: 'Static', 2: 'UnknownType2', 3: 'Money', 4: 'Heal', 5: 'Teleport',
-  6: 'Spell', 7: 'EXPReward', 8: 'StatReward', 9: 'SkillReward',
+  0: 'Static', 1: 'UnknownType1', 2: 'Money', 3: 'Heal', 4: 'Teleport',
+  5: 'Spell', 6: 'EXPReward', 7: 'StatReward', 8: 'SkillReward', 9: 'Key',
   10: 'Weapon', 11: 'Shield', 12: 'Armor', 13: 'Hat', 14: 'Boots',
   15: 'Gloves', 16: 'Accessory', 17: 'Belt', 18: 'Necklace',
-  19: 'Ring', 20: 'Armlet', 21: 'Bracer', 22: 'Alcohol',
+  19: 'Ring', 20: 'Armlet', 21: 'Bracer', 22: 'Beer',
   23: 'EffectPotion', 24: 'HairDye', 25: 'CureCurse'
 };
 
@@ -19,19 +22,48 @@ export default function ItemEditor({
   onSetGfxFolder
 }) {
   const [previewImage, setPreviewImage] = useState(null);
+  const [dropPreviewImage, setDropPreviewImage] = useState(null);
+  const [amount, setAmount] = useState(1); // For money preview
 
   useEffect(() => {
     if (item && item.graphic && gfxFolder) {
-      loadItemPreview();
+      loadItemPreviews();
     }
-  }, [item?.graphic, gfxFolder]);
+  }, [item?.graphic, item?.type, gfxFolder, amount]);
 
-  const loadItemPreview = async () => {
+  const loadItemPreviews = async () => {
     if (!item || !item.graphic) return;
     
-    const resourceId = (2 * item.graphic) + 100;
-    const dataUrl = await loadGfx(23, resourceId); // GFX023 for item icons
-    setPreviewImage(dataUrl);
+    // Inventory icon formula (from InventoryPanelItem.cs): 2 * graphic + 100 (PE offset)
+    let iconResourceId;
+    if (item.type === 2) {
+      // Money uses same drop graphic for inventory
+      const gfx = amount >= 100000 ? 4 : (
+        amount >= 10000 ? 3 : (
+          amount >= 100 ? 2 : (
+            amount >= 2 ? 1 : 0)));
+      iconResourceId = 269 + (2 * gfx) + 100;
+    } else {
+      iconResourceId = (2 * item.graphic) + 100;
+    }
+    const iconDataUrl = await loadGfx(23, iconResourceId);
+    setPreviewImage(iconDataUrl);
+
+    // Drop graphic formula (from MapItemGraphicProvider.cs): 
+    // - For money: 269 + 2 * gfx + 100 (PE offset)
+    // - For regular items: 2 * graphic - 1 + 100 (PE offset)
+    let dropResourceId;
+    if (item.type === 2) {
+      const gfx = amount >= 100000 ? 4 : (
+        amount >= 10000 ? 3 : (
+          amount >= 100 ? 2 : (
+            amount >= 2 ? 1 : 0)));
+      dropResourceId = 269 + (2 * gfx) + 100;
+    } else {
+      dropResourceId = (2 * item.graphic) - 1 + 100;
+    }
+    const dropDataUrl = await loadGfx(23, dropResourceId);
+    setDropPreviewImage(dropDataUrl);
   };
 
   const handleInputChange = (field, value) => {
@@ -39,6 +71,11 @@ export default function ItemEditor({
   };
 
   const handleGFXFolderSelect = async () => {
+    if (!isElectron) {
+      alert('Folder selection is only available in the Electron app.');
+      return;
+    }
+    
     const folder = await window.electronAPI.openDirectory();
     if (folder) {
       onSetGfxFolder(folder);
@@ -66,26 +103,6 @@ export default function ItemEditor({
       </div>
 
       <div className="editor-content">
-        <div className="preview-section">
-          <div className="preview-group">
-            <label>Icon Preview</label>
-            {previewImage ? (
-              <img src={previewImage} alt="Item preview" className="item-preview-image" />
-            ) : (
-              <div className="preview-placeholder">No preview</div>
-            )}
-          </div>
-          
-          <div className="preview-group">
-            <label>Paperdoll Preview</label>
-            <ItemPreview 
-              item={item} 
-              gfxFolder={gfxFolder} 
-              size="large"
-            />
-          </div>
-        </div>
-        
         <div className="form-grid">
           {/* Basic Properties */}
           <div className="form-group">
@@ -217,13 +234,42 @@ export default function ItemEditor({
           </div>
         </div>
 
-        {/* Item Preview */}
-        {previewImage && (
-          <div className="item-preview">
-            <h3>Item Icon</h3>
-            <img src={previewImage} alt={item.name} />
+        {/* Item Previews */}
+        <div className="item-previews-section">
+          <h3>Item Graphics</h3>
+          
+          {item.type === 2 && (
+            <div className="form-group">
+              <label>Amount (for money preview)</label>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(parseInt(e.target.value) || 1)}
+                min="1"
+                className="form-input"
+              />
+            </div>
+          )}
+          
+          <div className="preview-grid">
+            {previewImage && (
+              <div className="preview-item">
+                <label>Icon (Inventory)</label>
+                <div className="preview-box">
+                  <img src={previewImage} alt={`${item.name} icon`} />
+                </div>
+              </div>
+            )}
+            {dropPreviewImage && (
+              <div className="preview-item">
+                <label>Drop (Ground)</label>
+                <div className="preview-box">
+                  <img src={dropPreviewImage} alt={`${item.name} drop`} />
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

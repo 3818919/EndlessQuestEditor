@@ -4,28 +4,19 @@ import ItemEditor from './components/ItemEditor';
 import CharacterPreview from './components/CharacterPreview';
 import PaperdollSlots from './components/PaperdollSlots';
 import AppearanceControls from './components/AppearanceControls';
+import CollapsibleSection from './components/CollapsibleSection';
 import { useEIFData } from './hooks/useEIFData';
 import { useGFXCache } from './hooks/useGFXCache';
 import { useEquipment } from './hooks/useEquipment';
 import { useAppearance } from './hooks/useAppearance';
 
+// Check if running in Electron
+const isElectron = typeof window !== 'undefined' && window.electronAPI;
+
 function App() {
   const [gfxFolder, setGfxFolder] = useState(
     localStorage.getItem('gfxFolder') || ''
   );
-  
-  const selectGfxFolder = async () => {
-    try {
-      const folder = await window.electronAPI.openDirectory();
-      if (folder) {
-        setGfxFolder(folder);
-        localStorage.setItem('gfxFolder', folder);
-      }
-    } catch (error) {
-      console.error('Error selecting GFX folder:', error);
-      alert('Error selecting GFX folder: ' + error.message);
-    }
-  };
   
   const { 
     eifData, 
@@ -40,7 +31,42 @@ function App() {
     updateItem
   } = useEIFData();
 
-  const { gfxCache, loadGfx } = useGFXCache(gfxFolder);
+  const { gfxCache, loadGfx, saveDirHandle } = useGFXCache(gfxFolder);
+  
+  const selectGfxFolder = async () => {
+    try {
+      if (!isElectron) {
+        // Browser: Use File System Access API
+        if ('showDirectoryPicker' in window) {
+          const dirHandle = await window.showDirectoryPicker();
+          
+          // Save the handle to IndexedDB for persistence
+          await saveDirHandle(dirHandle);
+          
+          const path = dirHandle.name;
+          setGfxFolder(path);
+          localStorage.setItem('gfxFolder', path);
+          alert(`Selected folder: ${path}\n\nGFX graphics loading is now enabled! The folder will be remembered across sessions.`);
+        } else {
+          alert('Folder selection requires a modern browser (Chrome 86+, Edge 86+). For full functionality, use the Electron app: npm run dev');
+        }
+        return;
+      }
+      
+      const folder = await window.electronAPI.openDirectory();
+      if (folder) {
+        setGfxFolder(folder);
+        localStorage.setItem('gfxFolder', folder);
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        // User cancelled the picker
+        return;
+      }
+      console.error('Error selecting GFX folder:', error);
+      alert('Error selecting GFX folder: ' + error.message);
+    }
+  };
   
   const { 
     equippedItems, 
@@ -101,43 +127,49 @@ function App() {
         
         <div className="right-panel">
           <div className="paperdoll-section">
-            <h3>Character Paperdoll</h3>
+            <CollapsibleSection title="Appearance" defaultCollapsed={false}>
+              <AppearanceControls
+                gender={gender}
+                setGender={setGender}
+                hairStyle={hairStyle}
+                setHairStyle={setHairStyle}
+                hairColor={hairColor}
+                setHairColor={setHairColor}
+                skinTone={skinTone}
+                setSkinTone={setSkinTone}
+                presets={presets}
+                onSavePreset={savePreset}
+                onLoadPreset={loadPreset}
+                onDeletePreset={deletePreset}
+              />
+            </CollapsibleSection>
             
-            <AppearanceControls
-              gender={gender}
-              setGender={setGender}
-              hairStyle={hairStyle}
-              setHairStyle={setHairStyle}
-              hairColor={hairColor}
-              setHairColor={setHairColor}
-              skinTone={skinTone}
-              setSkinTone={setSkinTone}
-              presets={presets}
-              onSavePreset={savePreset}
-              onLoadPreset={loadPreset}
-              onDeletePreset={deletePreset}
-            />
+            <CollapsibleSection title="Equipment" defaultCollapsed={false}>
+              <PaperdollSlots
+                equippedItems={equippedItems}
+                onEquipItem={equipItem}
+                onUnequipSlot={unequipSlot}
+                onClearAll={clearAll}
+                items={eifData.items}
+                onAutoGenderSwitch={setGender}
+                loadGfx={loadGfx}
+                gfxFolder={gfxFolder}
+              />
+            </CollapsibleSection>
             
-            <PaperdollSlots
-              equippedItems={equippedItems}
-              onEquipItem={equipItem}
-              onUnequipSlot={unequipSlot}
-              onClearAll={clearAll}
-              items={eifData.items}
-              onAutoGenderSwitch={setGender}
-            />
-            
-            <CharacterPreview
-              equippedItems={equippedItems}
-              gender={gender}
-              hairStyle={hairStyle}
-              hairColor={hairColor}
-              skinTone={skinTone}
-              gfxCache={gfxCache}
-              loadGfx={loadGfx}
-              gfxFolder={gfxFolder}
-              items={eifData.items}
-            />
+            <CollapsibleSection title="Character Preview" defaultCollapsed={false}>
+              <CharacterPreview
+                equippedItems={equippedItems}
+                gender={gender}
+                hairStyle={hairStyle}
+                hairColor={hairColor}
+                skinTone={skinTone}
+                gfxCache={gfxCache}
+                loadGfx={loadGfx}
+                gfxFolder={gfxFolder}
+                items={eifData.items}
+              />
+            </CollapsibleSection>
           </div>
         </div>
       </div>

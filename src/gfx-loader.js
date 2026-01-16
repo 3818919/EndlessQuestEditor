@@ -517,11 +517,5 @@ class GFXLoader {
   }
 }
 
-// Export for use in renderer
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { GFXLoader };
-}
-// Also expose to window for browser usage
-if (typeof window !== 'undefined') {
-  window.GFXLoader = GFXLoader;
-}
+// ES6 export
+export { GFXLoader };

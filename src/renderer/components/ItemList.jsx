@@ -2,15 +2,16 @@ import React, { useState, useMemo } from 'react';
 import ItemPreview from './ItemPreview';
 
 const ITEM_TYPES = {
-  1: 'Static',
-  2: 'UnknownType2',
-  3: 'Money',
-  4: 'Heal',
-  5: 'Teleport',
-  6: 'Spell',
-  7: 'EXPReward',
-  8: 'StatReward',
-  9: 'SkillReward',
+  0: 'Static',
+  1: 'UnknownType1',
+  2: 'Money',
+  3: 'Heal',
+  4: 'Teleport',
+  5: 'Spell',
+  6: 'EXPReward',
+  7: 'StatReward',
+  8: 'SkillReward',
+  9: 'Key',
   10: 'Weapon',
   11: 'Shield',
   12: 'Armor',
@@ -23,7 +24,7 @@ const ITEM_TYPES = {
   19: 'Ring',
   20: 'Armlet',
   21: 'Bracer',
-  22: 'Alcohol',
+  22: 'Beer',
   23: 'EffectPotion',
   24: 'HairDye',
   25: 'CureCurse'
@@ -133,7 +134,14 @@ export default function ItemList({
                 draggable={true}
                 onDragStart={(e) => handleDragStart(e, item)}
               >
-                <ItemPreview item={item} gfxFolder={gfxFolder} size="small" />
+                <ItemPreview 
+                  item={item} 
+                  gfxFolder={gfxFolder} 
+                  loadGfx={loadGfx}
+                  size="small"
+                  lazy={true}
+                  mode="icon"
+                />
                 <div className="item-info">
                   <span className="item-id">#{item.id}</span>
                   <span className="item-name">{item.name}</span>

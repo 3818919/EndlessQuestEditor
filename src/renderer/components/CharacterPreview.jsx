@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { CharacterAnimator } from '../../character-animator.js';
 
 export default function CharacterPreview({
   equippedItems,
@@ -61,28 +62,45 @@ export default function CharacterPreview({
       
       // Load equipped items
       const armor = equippedItems.armor ? items[equippedItems.armor.id] : null;
+      const helmet = equippedItems.helmet ? items[equippedItems.helmet.id] : null;
+      const boots = equippedItems.boots ? items[equippedItems.boots.id] : null;
       const weapon = equippedItems.weapon ? items[equippedItems.weapon.id] : null;
       const shield = equippedItems.shield ? items[equippedItems.shield.id] : null;
       
-      // Load armor if equipped
+      // Load armor if equipped (layer 1 - on top of skin)
       if (armor && armor.dolGraphic) {
         await animator.loadArmorSprite(gfxFolder, armor.dolGraphic, gender);
       } else {
         animator.sprites.armor = null;
       }
       
-      // Load weapon if equipped
+      // Load boots if equipped (layer 2)
+      if (boots && boots.dolGraphic) {
+        await animator.loadBootsSprite(gfxFolder, boots.dolGraphic);
+      } else {
+        animator.sprites.boots = null;
+      }
+      
+      // Load shield/back items if equipped (layer 3 - can be behind or beside character)
+      if (shield && shield.dolGraphic) {
+        await animator.loadShieldSprite(gfxFolder, shield.dolGraphic, shield.subType || 0);
+      } else {
+        animator.sprites.shield = null;
+        animator.sprites.back = null;
+      }
+      
+      // Load weapon if equipped (layer 4)
       if (weapon && weapon.dolGraphic) {
         await animator.loadWeaponSprite(gfxFolder, weapon.dolGraphic);
       } else {
         animator.sprites.weapon = null;
       }
       
-      // Load shield if equipped
-      if (shield && shield.dolGraphic) {
-        await animator.loadBackSprite(gfxFolder, shield.dolGraphic);
+      // Load helmet if equipped (layer 5 - on top of hair)
+      if (helmet && helmet.dolGraphic) {
+        await animator.loadHelmetSprite(gfxFolder, helmet.dolGraphic);
       } else {
-        animator.sprites.back = null;
+        animator.sprites.helmet = null;
       }
       
       // Set animation state

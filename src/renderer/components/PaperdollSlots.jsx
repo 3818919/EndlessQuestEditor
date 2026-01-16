@@ -1,5 +1,7 @@
 import React from 'react';
 import { EQUIPMENT_SLOTS } from '../hooks/useEquipment';
+import ItemPreview from './ItemPreview';
+import Tooltip from './Tooltip';
 
 const SLOT_DISPLAY_NAMES = {
   [EQUIPMENT_SLOTS.WEAPON]: 'Weapon',
@@ -43,7 +45,9 @@ function EquipmentSlot({
   onUnequip, 
   onDrop,
   onAutoGenderSwitch,
-  items
+  items,
+  loadGfx,
+  gfxFolder
 }) {
   const [dragOver, setDragOver] = React.useState(false);
 
@@ -99,16 +103,24 @@ function EquipmentSlot({
     >
       <div className="slot-label">{SLOT_DISPLAY_NAMES[slotKey]}</div>
       {item ? (
-        <div className="slot-content">
-          <span className="slot-item-name">{item.name}</span>
-          <button 
-            onClick={() => onUnequip(slotKey)}
-            className="slot-remove"
-            title="Remove item"
-          >
-            ×
-          </button>
-        </div>
+        <Tooltip content={item.name}>
+          <div className="slot-content">
+            <ItemPreview 
+              item={item}
+              gfxFolder={gfxFolder}
+              loadGfx={loadGfx}
+              size="fill"
+              mode="icon"
+            />
+            <button 
+              onClick={() => onUnequip(slotKey)}
+              className="slot-remove"
+              title="Remove item"
+            >
+              ×
+            </button>
+          </div>
+        </Tooltip>
       ) : (
         <div className="slot-empty">Empty</div>
       )}
@@ -122,7 +134,9 @@ export default function PaperdollSlots({
   onUnequipSlot,
   onClearAll,
   items,
-  onAutoGenderSwitch
+  onAutoGenderSwitch,
+  loadGfx,
+  gfxFolder
 }) {
   return (
     <div className="paperdoll-slots">
@@ -146,6 +160,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
         </div>
 
@@ -158,6 +174,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
         </div>
 
@@ -170,6 +188,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
           <EquipmentSlot
             slotKey={EQUIPMENT_SLOTS.ARMOR}
@@ -178,6 +198,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
           <EquipmentSlot
             slotKey={EQUIPMENT_SLOTS.SHIELD}
@@ -186,6 +208,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
         </div>
 
@@ -198,6 +222,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
           <EquipmentSlot
             slotKey={EQUIPMENT_SLOTS.RING_2}
@@ -206,6 +232,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
         </div>
 
@@ -218,6 +246,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
           <EquipmentSlot
             slotKey={EQUIPMENT_SLOTS.ARMLET_2}
@@ -226,6 +256,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
         </div>
 
@@ -238,6 +270,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
           <EquipmentSlot
             slotKey={EQUIPMENT_SLOTS.BRACER_2}
@@ -246,6 +280,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
         </div>
 
@@ -258,6 +294,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
         </div>
 
@@ -270,6 +308,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
           <EquipmentSlot
             slotKey={EQUIPMENT_SLOTS.BOOTS}
@@ -278,6 +318,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
         </div>
 
@@ -290,6 +332,8 @@ export default function PaperdollSlots({
             onDrop={onEquipItem}
             onAutoGenderSwitch={onAutoGenderSwitch}
             items={items}
+            loadGfx={loadGfx}
+            gfxFolder={gfxFolder}
           />
         </div>
       </div>

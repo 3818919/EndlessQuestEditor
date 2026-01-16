@@ -1,3 +1,5 @@
+import { GFXLoader } from './gfx-loader.js';
+
 // Character animation system for previewing equipment on a character sprite
 class CharacterAnimator {
   constructor() {
@@ -366,6 +368,118 @@ class CharacterAnimator {
     }
   }
   
+  async loadShieldSprite(gfxFolder, graphicId, subType = 0) {
+    if (graphicId === 0) {
+      this.sprites.shield = null;
+      this.sprites.back = null;
+      return;
+    }
+    
+    // SubType determines if it's a back item or side shield
+    // SubType 0-3 are typically shields (side), 4+ are back items (wings, arrows, quiver)
+    const isBackItem = subType >= 4;
+    
+    const shieldData = await this.loadGFXFile(gfxFolder, this.GFX_MALE_BACK);
+    if (!shieldData) return;
+    
+    const baseGraphic = this.getBaseShieldGraphic(graphicId);
+    
+    if (isBackItem) {
+      // Load as back item (wings, arrows, etc.)
+      this.sprites.back = {
+        standing: null,
+        attackFrames: []
+      };
+      this.sprites.shield = null;
+      
+      const standingData = GFXLoader.extractBitmapByID(shieldData, baseGraphic + 1 + 100);
+      if (standingData) {
+        this.sprites.back.standing = await this.createImageFromData(standingData);
+      }
+      
+      const attackData = GFXLoader.extractBitmapByID(shieldData, baseGraphic + 3 + 100);
+      if (attackData) {
+        this.sprites.back.attackFrames[0] = await this.createImageFromData(attackData);
+      }
+    } else {
+      // Load as side shield
+      this.sprites.shield = {
+        standing: null,
+        attackFrames: []
+      };
+      this.sprites.back = null;
+      
+      const standingData = GFXLoader.extractBitmapByID(shieldData, baseGraphic + 1 + 100);
+      if (standingData) {
+        this.sprites.shield.standing = await this.createImageFromData(standingData);
+      }
+    }
+  }
+  
+  async loadBootsSprite(gfxFolder, graphicId) {
+    if (graphicId === 0) {
+      this.sprites.boots = null;
+      return;
+    }
+    
+    const bootsData = await this.loadGFXFile(gfxFolder, 16); // GFX016 for accessories
+    if (!bootsData) return;
+    
+    const baseGraphic = (graphicId - 1) * 50;
+    
+    this.sprites.boots = {
+      standing: null,
+      walkFrames: [],
+      attackFrames: []
+    };
+    
+    // Load standing sprite
+    const standingData = GFXLoader.extractBitmapByID(bootsData, baseGraphic + 1 + 100);
+    if (standingData) {
+      this.sprites.boots.standing = await this.createImageFromData(standingData);
+    }
+    
+    // Load walk frames (typically offsets 2-5)
+    for (let i = 2; i <= 5; i++) {
+      const walkData = GFXLoader.extractBitmapByID(bootsData, baseGraphic + i + 100);
+      if (walkData) {
+        this.sprites.boots.walkFrames.push(await this.createImageFromData(walkData));
+      }
+    }
+  }
+  
+  async loadHelmetSprite(gfxFolder, graphicId) {
+    if (graphicId === 0) {
+      this.sprites.helmet = null;
+      return;
+    }
+    
+    const helmetData = await this.loadGFXFile(gfxFolder, 15); // GFX015 for hats
+    if (!helmetData) return;
+    
+    const baseGraphic = (graphicId - 1) * 50;
+    
+    this.sprites.helmet = {
+      standing: null,
+      walkFrames: [],
+      attackFrames: []
+    };
+    
+    // Load standing sprite
+    const standingData = GFXLoader.extractBitmapByID(helmetData, baseGraphic + 1 + 100);
+    if (standingData) {
+      this.sprites.helmet.standing = await this.createImageFromData(standingData);
+    }
+    
+    // Load walk frames
+    for (let i = 2; i <= 5; i++) {
+      const walkData = GFXLoader.extractBitmapByID(helmetData, baseGraphic + i + 100);
+      if (walkData) {
+        this.sprites.helmet.walkFrames.push(await this.createImageFromData(walkData));
+      }
+    }
+  }
+  
   getBaseArmorGraphic(graphicId) {
     // Each armor has 50 sprites (various states and directions)
     return (graphicId - 1) * 50 + 1;
@@ -539,55 +653,96 @@ class CharacterAnimator {
   }
   
   drawStanding(centerX, centerY) {
-    // Draw skin standing (use stored gender)
+    // Render order (bottom to top):
+    // 1. Back items (wings, arrows, quiver)
+    // 2. Skin
+    // 3. Boots
+    // 4. Armor
+    // 5. Weapon
+    // 6. Shield (side)
+    // 7. Hair
+    // 8. Helmet
+    
+    // Layer 1: Back items (behind character)
+    if (this.sprites.back?.standing) {
+      this.drawSprite(this.sprites.back.standing, centerX, centerY);
+    }
+    
+    // Layer 2: Skin standing (use stored gender)
     if (this.sprites.skin?.standing) {
       this.drawSkinSprite(this.sprites.skin.standing, centerX, centerY, 0, this.gender, 1);
     }
     
-    // Draw armor standing (raised by 4px)
+    // Layer 3: Boots
+    if (this.sprites.boots?.standing) {
+      this.drawSprite(this.sprites.boots.standing, centerX, centerY);
+    }
+    
+    // Layer 4: Armor standing (raised by 4px)
     if (this.sprites.armor?.standing) {
       this.drawSprite(this.sprites.armor.standing, centerX, centerY - 4);
     }
     
-    // Draw weapon standing
+    // Layer 5: Weapon standing
     if (this.sprites.weapon?.standing) {
       this.drawSprite(this.sprites.weapon.standing, centerX, centerY);
     }
     
-    // Draw back item standing
-    if (this.sprites.back?.standing) {
-      this.drawSprite(this.sprites.back.standing, centerX, centerY);
+    // Layer 6: Shield (side shields, not back items)
+    if (this.sprites.shield?.standing) {
+      this.drawSprite(this.sprites.shield.standing, centerX, centerY);
+    }
+    
+    // Layer 7: Hair
+    if (this.sprites.hair?.standing) {
+      this.drawSprite(this.sprites.hair.standing, centerX, centerY);
+    }
+    
+    // Layer 8: Helmet (on top of hair)
+    if (this.sprites.helmet?.standing) {
+      this.drawSprite(this.sprites.helmet.standing, centerX, centerY);
     }
   }
   
   drawWalking(centerX, centerY) {
-    // Layer 1: Draw skin walking frame (base, use stored gender)
+    // Layer 1: Back items
+    if (this.sprites.back?.standing) {
+      this.drawSprite(this.sprites.back.standing, centerX, centerY);
+    }
+    
+    // Layer 2: Skin walking frame (base, use stored gender)
     if (this.sprites.skin?.walking) {
       this.drawSkinSprite(this.sprites.skin.walking, centerX, centerY, this.currentFrame, this.gender, 16);
     }
     
-    // Layer 2: Draw armor walking frame (on top of skin, raised by additional 4px to -8 total)
-    // Use walkFrames directly: frame 0 = walkFrames[0], frame 1 = walkFrames[1], etc.
-    let armorSprite = null;
+    // Layer 3: Boots walking
+    if (this.sprites.boots?.walkFrames && this.sprites.boots.walkFrames[this.currentFrame]) {
+      this.drawSprite(this.sprites.boots.walkFrames[this.currentFrame], centerX, centerY);
+    }
+    
+    // Layer 4: Armor walking
     if (this.sprites.armor?.walkFrames && this.sprites.armor.walkFrames[this.currentFrame]) {
-      armorSprite = this.sprites.armor.walkFrames[this.currentFrame];
-    } else if (this.sprites.armor?.standing) {
-      // Fallback to standing frame
-      armorSprite = this.sprites.armor.standing;
+      this.drawSprite(this.sprites.armor.walkFrames[this.currentFrame], centerX, centerY - 4);
     }
     
-    if (armorSprite) {
-      this.drawSprite(armorSprite, centerX + 1, centerY - 8);
-    }
-    
-    // Layer 3: Draw weapon (on top of armor)
+    // Layer 5: Weapon
     if (this.sprites.weapon?.standing) {
       this.drawSprite(this.sprites.weapon.standing, centerX, centerY);
     }
     
-    // Layer 4: Draw back item if present
-    if (this.sprites.back?.standing) {
-      this.drawSprite(this.sprites.back.standing, centerX, centerY);
+    // Layer 6: Side shield
+    if (this.sprites.shield?.standing) {
+      this.drawSprite(this.sprites.shield.standing, centerX, centerY);
+    }
+    
+    // Layer 7: Hair walking
+    if (this.sprites.hair?.walking) {
+      this.drawSpriteFromSheet(this.sprites.hair.walking, centerX, centerY, this.currentFrame, 16);
+    }
+    
+    // Layer 8: Helmet walking
+    if (this.sprites.helmet?.walkFrames && this.sprites.helmet.walkFrames[this.currentFrame]) {
+      this.drawSprite(this.sprites.helmet.walkFrames[this.currentFrame], centerX, centerY);
     }
   }
   
@@ -684,11 +839,5 @@ class CharacterAnimator {
   }
 }
 
-// Make available globally
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = CharacterAnimator;
-}
-// Also expose to window for browser usage
-if (typeof window !== 'undefined') {
-  window.CharacterAnimator = CharacterAnimator;
-}
+// ES6 export
+export { CharacterAnimator };

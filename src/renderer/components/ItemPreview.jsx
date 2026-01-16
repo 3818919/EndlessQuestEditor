@@ -1,19 +1,73 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export default function ItemPreview({ 
   item, 
   gfxFolder,
-  size = 'medium' // 'small', 'medium', 'large'
+  loadGfx, // Use cached GFX loading function
+  size = 'medium', // 'small', 'medium', 'large'
+  lazy = false, // Enable lazy loading for list items
+  mode = 'paperdoll' // 'paperdoll' or 'icon'
 }) {
   const [previewImage, setPreviewImage] = useState(null);
+  const [isVisible, setIsVisible] = useState(!lazy); // If not lazy, load immediately
+  const containerRef = useRef(null);
+
+  // Intersection Observer for lazy loading
+  useEffect(() => {
+    if (!lazy || !containerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+          }
+        });
+      },
+      {
+        rootMargin: '50px', // Start loading slightly before item comes into view
+        threshold: 0.01
+      }
+    );
+
+    observer.observe(containerRef.current);
+
+    return () => {
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current);
+      }
+    };
+  }, [lazy]);
 
   useEffect(() => {
-    if (item && item.dolGraphic && gfxFolder) {
-      loadPaperdollPreview();
-    } else {
-      setPreviewImage(null);
-    }
-  }, [item?.dolGraphic, item?.type, item?.gender, gfxFolder]);
+    if (!isVisible) return;
+
+    let isMounted = true;
+    
+    const loadPreview = async () => {
+      if (!item || !loadGfx) {
+        setPreviewImage(null);
+        return;
+      }
+
+      let url = null;
+      if (mode === 'icon' && item.graphic) {
+        url = await loadIconPreview();
+      } else if (mode === 'paperdoll' && item.dolGraphic) {
+        url = await loadPaperdollPreview();
+      }
+
+      if (isMounted) {
+        setPreviewImage(url);
+      }
+    };
+    
+    loadPreview();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [item?.dolGraphic, item?.graphic, item?.type, item?.gender, loadGfx, isVisible, mode]);
 
   const getGfxFileForItemType = (type) => {
     // Map item types to GFX file numbers
@@ -34,6 +88,22 @@ export default function ItemPreview({
     return typeMap[type] || null;
   };
 
+  const loadIconPreview = async () => {
+    if (!item || !item.graphic || item.graphic === 0) {
+      return null;
+    }
+
+    try {
+      // Item icons are in GFX023
+      const resourceId = (2 * item.graphic) + 100;
+      const dataUrl = await loadGfx(23, resourceId);
+      return dataUrl;
+    } catch (error) {
+      console.error('Error loading icon preview:', error);
+      return null;
+    }
+  };
+
   const getBaseGraphic = (dolGraphic, type) => {
     // Calculate base graphic ID (matches CharacterAnimator logic)
     // Each item has 50 offsets in the GFX file
@@ -41,9 +111,8 @@ export default function ItemPreview({
   };
 
   const loadPaperdollPreview = async () => {
-    if (!item || !item.dolGraphic || item.dolGraphic === 0) {
-      setPreviewImage(null);
-      return;
+    if (!item || !item.dolGraphic || item.dolGraphic === 0 || !loadGfx) {
+      return null;
     }
 
     try {
@@ -55,61 +124,45 @@ export default function ItemPreview({
       }
       
       if (!gfxFile) {
-        setPreviewImage(null);
-        return;
+        return null;
       }
 
       const baseGraphic = getBaseGraphic(item.dolGraphic, item.type);
       // Standing sprite is at offset 1, +100 for PE resource ID
       const resourceId = baseGraphic + 1 + 100;
 
-      const result = await window.electronAPI.readGFX(gfxFolder, gfxFile);
-      if (!result.success) {
-        console.error(`Failed to load GFX ${gfxFile}:`, result.error);
-        setPreviewImage(null);
-        return;
-      }
-
-      const gfxData = new Uint8Array(result.data);
-      const bitmapData = window.GFXLoader.extractBitmapByID(gfxData, resourceId);
-      
-      if (bitmapData) {
-        const canvas = document.createElement('canvas');
-        const width = Math.floor(bitmapData.width);
-        const height = Math.floor(bitmapData.height);
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        const imageData = ctx.createImageData(width, height);
-        imageData.data.set(bitmapData.data);
-        ctx.putImageData(imageData, 0, 0);
-        setPreviewImage(canvas.toDataURL());
-      } else {
-        console.warn(`No bitmap found for resource ${resourceId} in GFX ${gfxFile}`);
-        setPreviewImage(null);
-      }
+      // Use the cached loadGfx function instead of loading directly
+      const dataUrl = await loadGfx(gfxFile, resourceId);
+      return dataUrl;
     } catch (error) {
       console.error('Error loading paperdoll preview:', error);
-      setPreviewImage(null);
+      return null;
     }
   };
 
   const sizeClasses = {
     small: 'preview-small',
     medium: 'preview-medium',
-    large: 'preview-large'
+    large: 'preview-large',
+    fill: 'preview-fill'
   };
 
   if (!previewImage) {
     return (
-      <div className={`item-preview ${sizeClasses[size]} preview-empty`}>
-        <span>No Preview</span>
+      <div 
+        ref={containerRef}
+        className={`item-preview ${sizeClasses[size]} preview-empty`}
+      >
+        <span>{isVisible ? 'No Preview' : '...'}</span>
       </div>
     );
   }
 
   return (
-    <div className={`item-preview ${sizeClasses[size]}`}>
+    <div 
+      ref={containerRef}
+      className={`item-preview ${sizeClasses[size]}`}
+    >
       <img src={previewImage} alt="Item preview" />
     </div>
   );
