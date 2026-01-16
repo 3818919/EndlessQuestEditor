@@ -48,7 +48,9 @@ export default function ItemList({
   loadGfx,
   onEquipItem,
   showSettingsModal,
-  setShowSettingsModal
+  setShowSettingsModal,
+  leftPanelMinimized,
+  setLeftPanelMinimized
 }: {
   items: Record<number, any>;
   selectedItemId: number | null;
@@ -65,10 +67,13 @@ export default function ItemList({
   onEquipItem?: (item: any) => void;
   showSettingsModal: boolean;
   setShowSettingsModal: (show: boolean) => void;
+  leftPanelMinimized: boolean;
+  setLeftPanelMinimized: (minimized: boolean) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [activeLeftTab, setActiveLeftTab] = useState('items');
+  const [showFilterPopup, setShowFilterPopup] = useState(false);
 
   const filteredItems = useMemo(() => {
     const itemArray = Object.values(items);
@@ -99,7 +104,7 @@ export default function ItemList({
       <div className="left-vertical-sidebar">
         <button
           className={`left-sidebar-button ${activeLeftTab === 'items' ? 'active' : ''}`}
-          onClick={() => setActiveLeftTab('items')}
+          onClick={() => setLeftPanelMinimized(!leftPanelMinimized)}
           title="Items"
         >
           <ListAltIcon />
@@ -114,34 +119,79 @@ export default function ItemList({
         </button>
       </div>
       
-      <div className="item-list-content">
+      {showFilterPopup && (
+        <div className="filter-popup-overlay" onClick={() => setShowFilterPopup(false)}>
+          <div className="filter-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="filter-popup-content">
+              <h3>Search & Filter</h3>
+              <input
+                type="text"
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+              <select 
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="type-filter"
+              >
+                <option value="all">All Types</option>
+                {Object.entries(ITEM_TYPES).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <button 
+                onClick={() => setShowFilterPopup(false)}
+                className="btn btn-secondary btn-small"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className={`item-list-content ${leftPanelMinimized ? 'minimized' : ''}`}>
         <div className="item-list-filters">
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
-          
-          <select 
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="type-filter"
-          >
-            <option value="all">All Types</option>
-            {Object.entries(ITEM_TYPES).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+          {leftPanelMinimized ? (
+            <button
+              className="search-filter-button"
+              onClick={() => setShowFilterPopup(!showFilterPopup)}
+              title="Search & Filter"
+            >
+              <SearchIcon />
+            </button>
+          ) : (
+            <>
+              <input
+                type="text"
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+              
+              <select 
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="type-filter"
+              >
+                <option value="all">All Types</option>
+                {Object.entries(ITEM_TYPES).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
 
-          <button 
-            onClick={onAddItem}
-            className="btn btn-success btn-small"
-            disabled={!currentFile}
-          >
-            + Add Item
-          </button>
+              <button 
+                onClick={onAddItem}
+                className="btn btn-success btn-small"
+                disabled={!currentFile}
+              >
+                + Add Item
+              </button>
+            </>
+          )}
         </div>
 
         <div className="items-scroll">
@@ -159,6 +209,7 @@ export default function ItemList({
                   onDoubleClick={() => handleDoubleClick(item)}
                   draggable={true}
                   onDragStart={(e) => handleDragStart(e, item)}
+                  title={leftPanelMinimized ? `${item.name} (#${item.id})` : undefined}
                 >
                   <ItemPreview 
                     item={item} 
@@ -168,11 +219,13 @@ export default function ItemList({
                     lazy={true}
                     mode="icon"
                   />
+                  {!leftPanelMinimized && (
                   <div className="item-info">
                     <span className="item-id">#{item.id}</span>
-                    <span className="item-name">{item.name}</span>
-                    <span className="item-type">{ITEM_TYPES[item.type] || 'Unknown'}</span>
+                    <span className="item-name" title={item.name}>{item.name}</span>
+                    <span className="item-type" title={ITEM_TYPES[item.type] || 'Unknown'}>{ITEM_TYPES[item.type] || 'Unknown'}</span>
                   </div>
+                  )}
                 </li>
               ))}
             </ul>

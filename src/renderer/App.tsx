@@ -29,6 +29,8 @@ const App: React.FC = () => {
   );
   const [isResizing, setIsResizing] = useState(false);
   const [isPanelMinimized, setIsPanelMinimized] = useState(false);
+  const [leftPanelMinimized, setLeftPanelMinimized] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   
   const { 
@@ -37,6 +39,7 @@ const App: React.FC = () => {
     selectedItemId, 
     setSelectedItemId,
     loadFile,
+    loadFileFromPath,
     saveFile,
     addItem,
     deleteItem,
@@ -56,7 +59,7 @@ const App: React.FC = () => {
           const exists = await window.electronAPI.fileExists(defaultEifPath);
           if (exists) {
             console.log('Auto-loading default EIF file:', defaultEifPath);
-            await loadFile(defaultEifPath);
+            await loadFileFromPath(defaultEifPath);
           }
         } catch (error) {
           console.log('Could not auto-load default EIF file:', error);
@@ -81,7 +84,7 @@ const App: React.FC = () => {
     };
     
     autoLoadDefaults();
-  }, [currentFile, loadFile]); // Run when currentFile changes or on mount
+  }, [currentFile, loadFileFromPath]); // Run when currentFile changes or on mount
   
   const selectGfxFolder = async () => {
     try {
@@ -182,7 +185,7 @@ const App: React.FC = () => {
   return (
     <div className="app">
       <div className="main-content">
-        <div className=\"left-panel\">
+        <div className={`left-panel ${leftPanelMinimized ? 'minimized' : ''}`}>
           <ItemList
             items={eifData.items}
             selectedItemId={selectedItemId}
@@ -199,6 +202,8 @@ const App: React.FC = () => {
             onEquipItem={equipItem}
             showSettingsModal={showSettingsModal}
             setShowSettingsModal={setShowSettingsModal}
+            leftPanelMinimized={leftPanelMinimized}
+            setLeftPanelMinimized={setLeftPanelMinimized}
           />
         </div>
         
@@ -221,39 +226,42 @@ const App: React.FC = () => {
           <div className="resize-handle" onMouseDown={handleMouseDown} />
           
           <div className="right-panel-content">
-            {activeTab === 'appearance' && (
-              <AppearanceControls
-                gender={gender}
-                setGender={setGender}
-                hairStyle={hairStyle}
-                setHairStyle={setHairStyle}
-                hairColor={hairColor}
-                setHairColor={setHairColor}
-                skinTone={skinTone}
-                setSkinTone={setSkinTone}
-                gfxFolder={gfxFolder}
-                loadGfx={loadGfx}
-                presets={presets}
-                onSavePreset={savePreset}
-                onLoadPreset={loadPreset}
-                onDeletePreset={deletePreset}
-              />
-            )}
+            <div className="right-panel-top">
+              {activeTab === 'appearance' && (
+                <AppearanceControls
+                  gender={gender}
+                  setGender={setGender}
+                  hairStyle={hairStyle}
+                  setHairStyle={setHairStyle}
+                  hairColor={hairColor}
+                  setHairColor={setHairColor}
+                  skinTone={skinTone}
+                  setSkinTone={setSkinTone}
+                  gfxFolder={gfxFolder}
+                  loadGfx={loadGfx}
+                  presets={presets}
+                  onSavePreset={savePreset}
+                  onLoadPreset={loadPreset}
+                  onDeletePreset={deletePreset}
+                />
+              )}
+              
+              {activeTab === 'equipment' && (
+                <PaperdollSlots
+                  equippedItems={equippedItems}
+                  onEquipItem={equipItem}
+                  onUnequipSlot={unequipSlot}
+                  onClearAll={clearAll}
+                  items={eifData.items}
+                  onAutoGenderSwitch={setGender}
+                  loadGfx={loadGfx}
+                  gfxFolder={gfxFolder}
+                />
+              )}
+            </div>
             
-            {activeTab === 'equipment' && (
-              <PaperdollSlots
-                equippedItems={equippedItems}
-                onEquipItem={equipItem}
-                onUnequipSlot={unequipSlot}
-                onClearAll={clearAll}
-                items={eifData.items}
-                onAutoGenderSwitch={setGender}
-                loadGfx={loadGfx}
-                gfxFolder={gfxFolder}
-              />
-            )}
-            
-            {activeTab === 'preview' && (
+            {showPreview && (
+            <div className="right-panel-bottom">
               <CharacterPreview
                 equippedItems={equippedItems}
                 gender={gender}
@@ -264,6 +272,7 @@ const App: React.FC = () => {
                 gfxFolder={gfxFolder}
                 items={eifData.items}
               />
+            </div>
             )}
           </div>
           
@@ -298,17 +307,11 @@ const App: React.FC = () => {
               <CheckroomIcon />
               <span className="sidebar-label">Equipment</span>
             </button>
+            <div className="sidebar-spacer"></div>
             <button
-              className={`sidebar-button ${activeTab === 'preview' ? 'active' : ''}`}
-              onClick={() => {
-                if (activeTab === 'preview' && !isPanelMinimized) {
-                  setIsPanelMinimized(true);
-                } else {
-                  setActiveTab('preview');
-                  setIsPanelMinimized(false);
-                }
-              }}
-              title="Preview"
+              className={`sidebar-button ${showPreview ? 'active' : ''}`}
+              onClick={() => setShowPreview(!showPreview)}
+              title="Toggle Preview"
             >
               <VisibilityIcon />
               <span className="sidebar-label">Preview</span>

@@ -29,7 +29,7 @@ body {
 
 /* Panels */
 .left-panel {
-  width: 280px;
+  width: 320px;
   background: #252526;
   border-right: 1px solid #3e3e42;
   display: flex;
@@ -40,7 +40,7 @@ body {
 }
 
 .left-panel.minimized {
-  width: 80px;
+  width: 156px;
   overflow: visible;
 }
 
@@ -103,12 +103,67 @@ body {
   flex: 1;
 }
 
+/* Filter Popup */
+.filter-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  background: transparent;
+}
+
+.filter-popup {
+  position: absolute;
+  left: 60px;
+  top: 60px;
+  z-index: 1000;
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  width: 240px;
+}
+
+.filter-popup-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-popup-content h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #cccccc;
+  font-weight: 600;
+}
+
 /* Item List Content */
 .item-list-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.item-list-content.minimized .items-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  align-content: flex-start;
+}
+
+.item-list-content.minimized .item-row {
+  width: 80px;
+  height: 80px;
+  min-height: unset;
+  padding: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 /* Settings Modal */
@@ -188,10 +243,11 @@ body {
   background: #252526;
   border-left: 1px solid #3e3e42;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
   transition: width 0.2s ease;
+  height: 100%;
 }
 
 .right-panel.minimized {
@@ -230,6 +286,10 @@ body {
 
 /* Vertical Sidebar (Photoshop-inspired) */
 .vertical-sidebar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
   width: 60px;
   background: #2d2d30;
   border-left: 1px solid #3e3e42;
@@ -238,6 +298,7 @@ body {
   flex-shrink: 0;
   padding: 12px 8px;
   gap: 8px;
+  z-index: 10;
 }
 
 .sidebar-button {
@@ -297,9 +358,30 @@ body {
 
 .right-panel-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.right-panel-top {
+  flex: 1 1 auto;
   overflow-y: auto;
   padding: 15px;
+  padding-right: 75px;
   background: #252526;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #3e3e42;
+  min-height: 0;
+}
+
+.right-panel-bottom {
+  flex: 0 0 50%;
+  overflow-y: auto;
+  padding: 15px;
+  padding-right: 75px;
+  background: #1e1e1e;
   display: flex;
   flex-direction: column;
 }
@@ -879,6 +961,34 @@ body {
   gap: 8px;
 }
 
+.item-list-content.minimized .item-list-filters {
+  padding: 8px;
+}
+
+.search-filter-button {
+  width: 100%;
+  padding: 12px;
+  background: #3c3c3c;
+  border: 1px solid #3e3e42;
+  color: #cccccc;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.search-filter-button:hover {
+  background: #464646;
+  border-color: #007acc;
+}
+
+.search-filter-button svg {
+  font-size: 20px;
+}
+
 .type-filter {
   width: 100%;
   padding: 6px 10px;
@@ -924,6 +1034,7 @@ body {
   align-items: center;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .item-row:hover {
@@ -940,17 +1051,26 @@ body {
   color: #858585;
   font-size: 12px;
   min-width: 40px;
+  flex-shrink: 0;
 }
 
 .item-row .item-name {
   flex: 1;
   color: #cccccc;
   font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .item-row .item-type {
   color: #858585;
   font-size: 11px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 80px;
 }
 
 .file-info {

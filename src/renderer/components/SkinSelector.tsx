@@ -32,7 +32,7 @@ export default function SkinSelector({ gender, hairStyle, hairColor, skinTone, s
         }
 
         // Load skin image
-        const standingImage = await new Promise((resolve, reject) => {
+        const standingImage = await new Promise<HTMLImageElement>((resolve, reject) => {
           const img = new Image();
           img.onload = () => resolve(img);
           img.onerror = reject;
@@ -48,7 +48,7 @@ export default function SkinSelector({ gender, hairStyle, hairColor, skinTone, s
           
           const hairDataUrl = await loadGfx(hairGfxFile, resourceId);
           if (hairDataUrl) {
-            hairImage = await new Promise((resolve) => {
+            hairImage = await new Promise<HTMLImageElement | null>((resolve) => {
               const img = new Image();
               img.onload = () => resolve(img);
               img.onerror = () => resolve(null);

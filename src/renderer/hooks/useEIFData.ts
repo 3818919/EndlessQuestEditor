@@ -394,6 +394,7 @@ export function useEIFData() {
     selectedItemId,
     setSelectedItemId,
     loadFile,
+    loadFileFromPath,
     saveFile,
     addItem,
     deleteItem,
