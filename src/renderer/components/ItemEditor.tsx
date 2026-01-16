@@ -16,6 +16,7 @@ const ITEM_TYPES = {
 export default function ItemEditor({ 
   item, 
   onUpdateItem,
+  onDuplicateItem,
   loadGfx,
   gfxFolder,
   onSetGfxFolder
@@ -94,11 +95,20 @@ export default function ItemEditor({
     <div className="item-editor">
       <div className="editor-header">
         <h2>Item #{item.id}</h2>
-        {!gfxFolder && (
-          <button onClick={handleGFXFolderSelect} className="btn btn-secondary">
-            Set GFX Folder
+        <div className="editor-header-actions">
+          <button 
+            onClick={() => onDuplicateItem(item.id)} 
+            className="btn btn-secondary"
+            title="Duplicate this item"
+          >
+            Duplicate
           </button>
-        )}
+          {!gfxFolder && (
+            <button onClick={handleGFXFolderSelect} className="btn btn-secondary">
+              Set GFX Folder
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="editor-content">

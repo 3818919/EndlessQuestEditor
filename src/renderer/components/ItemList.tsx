@@ -103,7 +103,7 @@ export default function ItemList({
     <>
       <div className="left-vertical-sidebar">
         <button
-          className={`left-sidebar-button ${activeLeftTab === 'items' ? 'active' : ''}`}
+          className={`left-sidebar-button ${(activeLeftTab === 'items' && !leftPanelMinimized) ? 'active' : ''}`}
           onClick={() => setLeftPanelMinimized(!leftPanelMinimized)}
           title="Items"
         >

@@ -212,6 +212,7 @@ const App: React.FC = () => {
             <ItemEditor
               item={selectedItem}
               onUpdateItem={updateItem}
+              onDuplicateItem={duplicateItem}
               loadGfx={loadGfx}
               gfxFolder={gfxFolder}
               onSetGfxFolder={setGfxFolder}
