@@ -4,6 +4,7 @@ import ItemEditor from './components/ItemEditor';
 import CharacterPreview from './components/CharacterPreview';
 import PaperdollSlots from './components/PaperdollSlots';
 import AppearanceControls from './components/AppearanceControls';
+import LandingScreen from './components/LandingScreen';
 import { useEIFData } from './hooks/useEIFData';
 import { useGFXCache } from './hooks/useGFXCache';
 import { useEquipment } from './hooks/useEquipment';
@@ -44,47 +45,12 @@ const App: React.FC = () => {
     addItem,
     deleteItem,
     duplicateItem,
-    updateItem
+    updateItem,
+    setEifData,
+    setCurrentFile
   } = useEIFData();
 
   const { loadGfx, saveDirHandle } = useGFXCache(gfxFolder);
-  
-  // Auto-load default files on mount
-  React.useEffect(() => {
-    const autoLoadDefaults = async () => {
-      // Auto-load EIF file if not already loaded
-      if (!currentFile && isElectron && window.electronAPI) {
-        try {
-          const defaultEifPath = 'data/pub/dat001.eif';
-          const exists = await window.electronAPI.fileExists(defaultEifPath);
-          if (exists) {
-            console.log('Auto-loading default EIF file:', defaultEifPath);
-            await loadFileFromPath(defaultEifPath);
-          }
-        } catch (error) {
-          console.log('Could not auto-load default EIF file:', error);
-        }
-      }
-      
-      // Auto-select GFX folder if not already set
-      const storedGfxFolder = localStorage.getItem('gfxFolder');
-      if (!storedGfxFolder && isElectron && window.electronAPI) {
-        try {
-          const defaultGfxPath = 'data/gfx';
-          const exists = await window.electronAPI.fileExists(defaultGfxPath);
-          if (exists) {
-            console.log('Auto-selecting default GFX folder:', defaultGfxPath);
-            setGfxFolder(defaultGfxPath);
-            localStorage.setItem('gfxFolder', defaultGfxPath);
-          }
-        } catch (error) {
-          console.log('Could not auto-select default GFX folder:', error);
-        }
-      }
-    };
-    
-    autoLoadDefaults();
-  }, [currentFile, loadFileFromPath]); // Run when currentFile changes or on mount
   
   const selectGfxFolder = async () => {
     try {
@@ -182,6 +148,54 @@ const App: React.FC = () => {
 
   const selectedItem = selectedItemId !== null ? eifData.items[selectedItemId] : null;
 
+  // Wrapper functions for drag and drop
+  const handleLoadEIFFromPath = async (path: string) => {
+    if (isElectron && window.electronAPI) {
+      await loadFileFromPath(path);
+    }
+  };
+
+  const handleSelectGfxFromPath = (path: string) => {
+    setGfxFolder(path);
+    localStorage.setItem('gfxFolder', path);
+  };
+
+  const handleResetFileSelection = () => {
+    // Clear localStorage
+    localStorage.removeItem('lastEifFile');
+    localStorage.removeItem('gfxFolder');
+    
+    // Clear state
+    setGfxFolder('');
+    
+    // Clear EIF data (this will also clear currentFile)
+    setEifData({ version: 1, items: {} });
+    setCurrentFile(null);
+    setSelectedItemId(null);
+    
+    // Force reload to show landing page
+    window.location.reload();
+  };
+
+  // Check if we need to show the landing screen
+  const showLandingScreen = !currentFile || !gfxFolder;
+
+  // If landing screen should be shown, render it
+  if (showLandingScreen) {
+    return (
+      <LandingScreen
+        onLoadEIFFile={loadFile}
+        onSelectGfxFolder={selectGfxFolder}
+        onLoadEIFFromPath={handleLoadEIFFromPath}
+        onSelectGfxFromPath={handleSelectGfxFromPath}
+        hasEIFFile={!!currentFile}
+        hasGfxFolder={!!gfxFolder}
+        eifFileName={currentFile}
+        gfxFolderPath={gfxFolder}
+      />
+    );
+  }
+
   return (
     <div className="app">
       <div className="main-content">
@@ -204,6 +218,9 @@ const App: React.FC = () => {
             setShowSettingsModal={setShowSettingsModal}
             leftPanelMinimized={leftPanelMinimized}
             setLeftPanelMinimized={setLeftPanelMinimized}
+            onResetFileSelection={handleResetFileSelection}
+            onLoadEIFFromPath={handleLoadEIFFromPath}
+            onSelectGfxFromPath={handleSelectGfxFromPath}
           />
         </div>
         

@@ -10,6 +10,7 @@ interface ElectronAPI {
   writeFile: (filePath: string, data: Uint8Array) => Promise<{ success: boolean; error?: string }>;
   openDirectory: () => Promise<string>;
   fileExists: (filePath: string) => Promise<boolean>;
+  isDirectory: (filePath: string) => Promise<boolean>;
 }
 
 interface Window {

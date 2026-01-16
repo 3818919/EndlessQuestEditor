@@ -3,6 +3,12 @@ import ItemPreview from './ItemPreview';
 import SearchIcon from '@mui/icons-material/Search';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SettingsIcon from '@mui/icons-material/Settings';
+import SaveIcon from '@mui/icons-material/Save';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+
+// Check if running in Electron
+const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
 const ITEM_TYPES = {
   0: 'Static',
@@ -50,7 +56,10 @@ export default function ItemList({
   showSettingsModal,
   setShowSettingsModal,
   leftPanelMinimized,
-  setLeftPanelMinimized
+  setLeftPanelMinimized,
+  onResetFileSelection,
+  onLoadEIFFromPath,
+  onSelectGfxFromPath
 }: {
   items: Record<number, any>;
   selectedItemId: number | null;
@@ -69,11 +78,86 @@ export default function ItemList({
   setShowSettingsModal: (show: boolean) => void;
   leftPanelMinimized: boolean;
   setLeftPanelMinimized: (minimized: boolean) => void;
+  onResetFileSelection: () => void;
+  onLoadEIFFromPath: (path: string) => void;
+  onSelectGfxFromPath: (path: string) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [activeLeftTab, setActiveLeftTab] = useState('items');
   const [showFilterPopup, setShowFilterPopup] = useState(false);
+  const [eifDragOver, setEifDragOver] = useState(false);
+  const [gfxDragOver, setGfxDragOver] = useState(false);
+
+  // Drag and drop handlers for EIF
+  const handleEifDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEifDragOver(true);
+  };
+
+  const handleEifDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEifDragOver(false);
+  };
+
+  const handleEifDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEifDragOver(false);
+
+    if (isElectron && window.electronAPI) {
+      const files = Array.from(e.dataTransfer.files);
+      const eifFile = files.find(f => f.path.endsWith('.eif'));
+      if (eifFile && (eifFile as any).path) {
+        onLoadEIFFromPath((eifFile as any).path);
+      }
+    } else {
+      const files = Array.from(e.dataTransfer.files);
+      const eifFile = files.find(f => f.name.endsWith('.eif'));
+      if (eifFile) {
+        onLoadFile();
+      }
+    }
+  };
+
+  // Drag and drop handlers for GFX
+  const handleGfxDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setGfxDragOver(true);
+  };
+
+  const handleGfxDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setGfxDragOver(false);
+  };
+
+  const handleGfxDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setGfxDragOver(false);
+
+    if (isElectron && window.electronAPI) {
+      const items = Array.from(e.dataTransfer.items);
+      if (items.length > 0) {
+        const item = items[0];
+        const file = item.getAsFile();
+        if (file && (file as any).path) {
+          let path = (file as any).path;
+          const isDir = await window.electronAPI.isDirectory(path);
+          if (isDir) {
+            onSelectGfxFromPath(path);
+          } else {
+            const dirPath = path.substring(0, path.lastIndexOf('/'));
+            onSelectGfxFromPath(dirPath);
+          }
+        }
+      }
+    }
+  };
 
   const filteredItems = useMemo(() => {
     const itemArray = Object.values(items);
@@ -108,6 +192,14 @@ export default function ItemList({
           title="Items"
         >
           <ListAltIcon />
+        </button>
+        <button
+          className="left-sidebar-button save-button"
+          onClick={onSaveFile}
+          disabled={!currentFile}
+          title="Save EIF File"
+        >
+          <SaveIcon />
         </button>
         <div className="sidebar-spacer"></div>
         <button
@@ -235,40 +327,82 @@ export default function ItemList({
 
       {showSettingsModal && (
         <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
             <h2>File Settings</h2>
             
-            <div className="settings-section">
-              <h3>Current Files</h3>
-              {currentFile && <div className="file-path">EIF: {currentFile}</div>}
-              {gfxFolder && <div className="file-path">GFX: {gfxFolder}</div>}
-            </div>
+            <div className="settings-drop-zones">
+              <div 
+                className={`settings-drop-zone ${currentFile ? 'has-file' : ''} ${eifDragOver ? 'drag-over' : ''}`}
+                onClick={onLoadFile}
+                onDragOver={handleEifDragOver}
+                onDragLeave={handleEifDragLeave}
+                onDrop={handleEifDrop}
+              >
+                <div className="drop-zone-icon">
+                  <InsertDriveFileIcon />
+                </div>
+                <div className="drop-zone-text">
+                  {currentFile ? (
+                    <>
+                      <div className="drop-zone-title">Item File</div>
+                      <div className="drop-zone-file">{currentFile}</div>
+                      <div className="drop-zone-hint">Click to change</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="drop-zone-title">Item File (EIF)</div>
+                      <div className="drop-zone-hint">Click or drop .eif file</div>
+                    </>
+                  )}
+                </div>
+              </div>
 
-            <div className="settings-section">
-              <h3>File Operations</h3>
-              <div className="settings-buttons">
-                <button onClick={onLoadFile} className="btn btn-primary">
-                  Open EIF File
-                </button>
-                <button 
-                  onClick={onSaveFile} 
-                  className="btn btn-success"
-                  disabled={!currentFile}
-                >
-                  Save EIF File
-                </button>
-                <button onClick={onSelectGfxFolder} className="btn btn-primary">
-                  Select GFX Folder
-                </button>
+              <div 
+                className={`settings-drop-zone ${gfxFolder ? 'has-file' : ''} ${gfxDragOver ? 'drag-over' : ''}`}
+                onClick={onSelectGfxFolder}
+                onDragOver={handleGfxDragOver}
+                onDragLeave={handleGfxDragLeave}
+                onDrop={handleGfxDrop}
+              >
+                <div className="drop-zone-icon">
+                  <FolderOpenIcon />
+                </div>
+                <div className="drop-zone-text">
+                  {gfxFolder ? (
+                    <>
+                      <div className="drop-zone-title">Graphics Folder</div>
+                      <div className="drop-zone-file">{gfxFolder}</div>
+                      <div className="drop-zone-hint">Click to change</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="drop-zone-title">Graphics Folder (GFX)</div>
+                      <div className="drop-zone-hint">Click or drop folder</div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
-            <button 
-              onClick={() => setShowSettingsModal(false)} 
-              className="btn btn-secondary modal-close"
-            >
-              Close
-            </button>
+            <div className="modal-actions">
+              <button 
+                onClick={() => {
+                  if (confirm('This will clear your file selections and return to the landing page. Continue?')) {
+                    onResetFileSelection();
+                    setShowSettingsModal(false);
+                  }
+                }} 
+                className="btn btn-danger modal-action-btn"
+              >
+                Reset File Selection
+              </button>
+              <button 
+                onClick={() => setShowSettingsModal(false)} 
+                className="btn btn-secondary modal-action-btn"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

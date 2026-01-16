@@ -8,6 +8,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -148,6 +149,15 @@ ipcMain.handle('file:exists', async (event, filePath) => {
   try {
     await fs.access(filePath);
     return true;
+  } catch (error) {
+    return false;
+  }
+});
+
+ipcMain.handle('file:isDirectory', async (event, filePath) => {
+  try {
+    const stats = await fs.stat(filePath);
+    return stats.isDirectory();
   } catch (error) {
     return false;
   }

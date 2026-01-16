@@ -399,6 +399,8 @@ export function useEIFData() {
     addItem,
     deleteItem,
     duplicateItem,
-    updateItem
+    updateItem,
+    setEifData,
+    setCurrentFile
   };
 }

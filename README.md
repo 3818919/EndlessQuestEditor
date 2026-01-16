@@ -2,6 +2,8 @@
 
 A cross-platform visual editor for Endless Online pub files and GFX graphics, built with Electron.
 
+![OakTree Demo](recording.gif)
+
 ## Features
 
 - **Load and Save EIF Files**: Open and edit Endless Online item files (.eif)
