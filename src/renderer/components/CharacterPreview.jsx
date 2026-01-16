@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CharacterAnimator } from '../../character-animator.js';
+import { CharacterAnimator } from '../../animation/character-animator.js';
 
 export default function CharacterPreview({
   equippedItems,
@@ -50,11 +50,11 @@ export default function CharacterPreview({
       }
       
       // Load hair sprites
-      if (hairStyle > 0 && hairColor >= 0 && hairColor < animator.GFX_HAIR.length) {
-        const hairGfxFile = animator.GFX_HAIR[hairColor];
+      if (hairStyle > 0) {
+        const hairGfxFile = gender === 0 ? animator.GFX_FEMALE_HAIR : animator.GFX_MALE_HAIR;
         const hairData = await animator.loadGFXFile(gfxFolder, hairGfxFile);
         if (hairData) {
-          animator.sprites.hair = await animator.loadHairSprites(hairData, hairStyle);
+          animator.sprites.hair = await animator.loadHairSprites(hairData, hairStyle, hairColor, animator.direction);
         }
       } else {
         animator.sprites.hair = null;

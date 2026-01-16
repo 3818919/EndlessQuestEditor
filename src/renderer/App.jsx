@@ -4,7 +4,6 @@ import ItemEditor from './components/ItemEditor';
 import CharacterPreview from './components/CharacterPreview';
 import PaperdollSlots from './components/PaperdollSlots';
 import AppearanceControls from './components/AppearanceControls';
-import CollapsibleSection from './components/CollapsibleSection';
 import { useEIFData } from './hooks/useEIFData';
 import { useGFXCache } from './hooks/useGFXCache';
 import { useEquipment } from './hooks/useEquipment';
@@ -17,6 +16,11 @@ function App() {
   const [gfxFolder, setGfxFolder] = useState(
     localStorage.getItem('gfxFolder') || ''
   );
+  const [activeTab, setActiveTab] = useState('appearance');
+  const [rightPanelWidth, setRightPanelWidth] = useState(
+    parseInt(localStorage.getItem('rightPanelWidth') || '400')
+  );
+  const [isResizing, setIsResizing] = useState(false);
   
   const { 
     eifData, 
@@ -89,6 +93,38 @@ function App() {
     loadPreset,
     deletePreset
   } = useAppearance();
+  
+  // Handle resize
+  const handleMouseDown = (e) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+  
+  React.useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth >= 300 && newWidth <= 800) {
+        setRightPanelWidth(newWidth);
+        localStorage.setItem('rightPanelWidth', newWidth.toString());
+      }
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+    
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const selectedItem = selectedItemId !== null ? eifData.items[selectedItemId] : null;
 
@@ -109,6 +145,7 @@ function App() {
             onSelectGfxFolder={selectGfxFolder}
             gfxFolder={gfxFolder}
             loadGfx={loadGfx}
+            onEquipItem={equipItem}
           />
         </div>
         
@@ -125,9 +162,35 @@ function App() {
           )}
         </div>
         
-        <div className="right-panel">
-          <div className="paperdoll-section">
-            <CollapsibleSection title="Appearance" defaultCollapsed={false}>
+        <div 
+          className={`right-panel ${isResizing ? 'resizing' : ''}`}
+          style={{ width: `${rightPanelWidth}px` }}
+        >
+          <div className="resize-handle" onMouseDown={handleMouseDown} />
+          
+          <div className="right-panel-tabs">
+            <button
+              className={`tab ${activeTab === 'appearance' ? 'active' : ''}`}
+              onClick={() => setActiveTab('appearance')}
+            >
+              Appearance
+            </button>
+            <button
+              className={`tab ${activeTab === 'equipment' ? 'active' : ''}`}
+              onClick={() => setActiveTab('equipment')}
+            >
+              Equipment
+            </button>
+            <button
+              className={`tab ${activeTab === 'preview' ? 'active' : ''}`}
+              onClick={() => setActiveTab('preview')}
+            >
+              Character Preview
+            </button>
+          </div>
+          
+          <div className="right-panel-content">
+            {activeTab === 'appearance' && (
               <AppearanceControls
                 gender={gender}
                 setGender={setGender}
@@ -137,14 +200,15 @@ function App() {
                 setHairColor={setHairColor}
                 skinTone={skinTone}
                 setSkinTone={setSkinTone}
+                gfxFolder={gfxFolder}
                 presets={presets}
                 onSavePreset={savePreset}
                 onLoadPreset={loadPreset}
                 onDeletePreset={deletePreset}
               />
-            </CollapsibleSection>
+            )}
             
-            <CollapsibleSection title="Equipment" defaultCollapsed={false}>
+            {activeTab === 'equipment' && (
               <PaperdollSlots
                 equippedItems={equippedItems}
                 onEquipItem={equipItem}
@@ -155,9 +219,9 @@ function App() {
                 loadGfx={loadGfx}
                 gfxFolder={gfxFolder}
               />
-            </CollapsibleSection>
+            )}
             
-            <CollapsibleSection title="Character Preview" defaultCollapsed={false}>
+            {activeTab === 'preview' && (
               <CharacterPreview
                 equippedItems={equippedItems}
                 gender={gender}
@@ -169,7 +233,7 @@ function App() {
                 gfxFolder={gfxFolder}
                 items={eifData.items}
               />
-            </CollapsibleSection>
+            )}
           </div>
         </div>
       </div>

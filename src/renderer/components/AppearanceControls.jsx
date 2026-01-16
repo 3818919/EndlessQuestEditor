@@ -1,4 +1,20 @@
 import React, { useState } from 'react';
+import HairstyleSelector from './HairstyleSelector.jsx';
+import SkinSelector from './SkinSelector.jsx';
+
+// Hair color palette (0-indexed)
+const HAIR_COLORS = [
+  { id: 0, name: 'Brown', hex: '#8B4513' },
+  { id: 1, name: 'Green', hex: '#228B22' },
+  { id: 2, name: 'Pink', hex: '#FF69B4' },
+  { id: 3, name: 'Red', hex: '#DC143C' },
+  { id: 4, name: 'Yellow', hex: '#FFD700' },
+  { id: 5, name: 'Blue', hex: '#1E90FF' },
+  { id: 6, name: 'Purple', hex: '#9370DB' },
+  { id: 7, name: 'Light Blue', hex: '#87CEEB' },
+  { id: 8, name: 'White', hex: '#F0F0F0' },
+  { id: 9, name: 'Black', hex: '#000000' }
+];
 
 export default function AppearanceControls({
   gender,
@@ -9,6 +25,7 @@ export default function AppearanceControls({
   setHairColor,
   skinTone,
   setSkinTone,
+  gfxFolder,
   presets,
   onSavePreset,
   onLoadPreset,
@@ -31,49 +48,67 @@ export default function AppearanceControls({
       <div className="appearance-form">
         <div className="form-group">
           <label>Gender</label>
-          <select
-            value={gender}
-            onChange={(e) => setGender(parseInt(e.target.value))}
-            className="form-select"
-          >
-            <option value="0">Female</option>
-            <option value="1">Male</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Hair Style</label>
-          <input
-            type="number"
-            value={hairStyle}
-            onChange={(e) => setHairStyle(Math.max(0, parseInt(e.target.value) || 0))}
-            min="0"
-            className="form-input"
-          />
+          <div className="gender-picker">
+            <button
+              className={`gender-button ${gender === 1 ? 'selected' : ''}`}
+              onClick={() => setGender(1)}
+              title="Male"
+            >
+              <span className="gender-icon">♂</span>
+              <span className="gender-label">Male</span>
+            </button>
+            <button
+              className={`gender-button ${gender === 0 ? 'selected' : ''}`}
+              onClick={() => setGender(0)}
+              title="Female"
+            >
+              <span className="gender-icon">♀</span>
+              <span className="gender-label">Female</span>
+            </button>
+          </div>
         </div>
 
         <div className="form-group">
           <label>Hair Color</label>
-          <input
-            type="number"
-            value={hairColor}
-            onChange={(e) => setHairColor(Math.max(0, parseInt(e.target.value) || 0))}
-            min="0"
-            className="form-input"
+          <div className="hair-color-picker">
+            {HAIR_COLORS.map(color => (
+              <button
+                key={color.id}
+                className={`color-swatch ${hairColor === color.id ? 'selected' : ''}`}
+                style={{ backgroundColor: color.hex }}
+                onClick={() => setHairColor(color.id)}
+                title={`${color.name} (${color.id})`}
+                aria-label={color.name}
+              >
+                {hairColor === color.id && (
+                  <span className="checkmark">✓</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>Hair Style</label>
+          <HairstyleSelector
+            gender={gender}
+            hairColor={hairColor}
+            hairStyle={hairStyle}
+            setHairStyle={setHairStyle}
+            gfxFolder={gfxFolder}
           />
         </div>
 
         <div className="form-group">
           <label>Skin Tone</label>
-          <input
-            type="number"
-            value={skinTone}
-            onChange={(e) => setSkinTone(Math.max(0, Math.min(6, parseInt(e.target.value) || 0)))}
-            min="0"
-            max="6"
-            className="form-input"
+          <SkinSelector
+            gender={gender}
+            hairStyle={hairStyle}
+            hairColor={hairColor}
+            skinTone={skinTone}
+            setSkinTone={setSkinTone}
+            gfxFolder={gfxFolder}
           />
-          <small className="form-hint">0-6 (7 skin tones available)</small>
         </div>
       </div>
 

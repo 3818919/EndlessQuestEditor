@@ -8,15 +8,63 @@ The character animator displays equipment items on a male character sprite with 
 - **Armor items** (type 12): Walking animation (4 frames)
 - **Weapon items** (type 10): Attacking animation (2 frames)
 - **Shield/Back items** (type 11): Attacking animation
+- **Boots items** (type 14): Walking animation (4 frames)
+- **Hat items** (type 13): Walking animation (4 frames)
 
 ## Architecture
 
-### CharacterAnimator Class
-Located in `src/character-animator.js`, this class handles:
-- Loading character sprite sheets from multiple GFX files
-- Compositing layered sprites (skin + equipment)
-- Animating between frames
-- Rendering to HTML5 canvas
+The animation system is organized into modular files within `src/animation/`:
+
+### Core Files
+
+#### `character-animator.js`
+The main orchestrator class that:
+- Manages animation state (standing, walking, attacking)
+- Coordinates sprite loading and rendering
+- Handles the animation loop and frame timing
+- Provides the public API for the preview component
+
+#### `constants.js`
+Defines core enums and constants:
+- `Gender`: Female (0), Male (1)
+- `CharacterFrame`: All possible character poses/actions (22 total frames)
+- `GFX_FILES`: GFX file numbers for different equipment types
+- `ANIMATION_TIMING`: Frame delays for different animation states
+- `ITEM_TYPE`: Item type constants from EIF spec
+- Helper functions for calculating base graphics IDs
+
+#### `offsets.js`
+Equipment positioning tables that define pixel offsets for each equipment type:
+- `BOOTS_OFFSETS`: Boot positioning for all character frames
+- `ARMOR_OFFSETS`: Armor positioning for all character frames
+- `HAT_OFFSETS`: Hat/helmet positioning for all character frames
+- `WEAPON_OFFSETS`: Weapon positioning for all character frames
+- `SHIELD_OFFSETS`: Shield positioning for all character frames
+- `HAIR_OFFSETS`: Hair positioning for all character frames
+- `BACK_OFFSETS`: Back item (wings, arrows) positioning for all character frames
+
+Each offset table is organized by gender and character frame, ensuring equipment aligns properly with the character sprite in every pose.
+
+#### `sprite-loader.js`
+Handles loading sprite data from GFX files:
+- `loadGFXFile()`: Loads raw GFX file data
+- `createImageFromData()`: Converts bitmap data to Image objects with transparency
+- `loadSkinSprites()`: Loads base character skin sprite sheets
+- `loadArmorSprite()`: Loads armor sprites (50 sprites per item)
+- `loadWeaponSprite()`: Loads weapon sprites (100 sprites per item)
+- `loadBackSprite()`: Loads shield/back item sprites (50 sprites per item)
+- `loadBootsSprite()`: Loads boots sprites (40 sprites per item)
+- `loadHelmetSprite()`: Loads hat/helmet sprites (50 sprites per item)
+
+#### `renderer.js`
+Handles drawing sprites to canvas:
+- `getCurrentCharacterFrame()`: Determines current frame enum based on state
+- `getEquipmentOffset()`: Retrieves equipment offset for current frame
+- `drawSkinSprite()`: Draws character skin from sprite sheet
+- `drawSprite()`: Draws equipment sprites with offsets
+- `drawStanding()`: Renders all layers for standing pose
+- `drawWalking()`: Renders all layers for walking animation
+- `drawAttacking()`: Renders all layers for attacking animation
 
 ### Sprite Layers
 Character sprites are rendered in layers (bottom to top):

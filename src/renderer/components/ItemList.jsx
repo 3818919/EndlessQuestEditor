@@ -42,7 +42,8 @@ export default function ItemList({
   currentFile,
   onSelectGfxFolder,
   gfxFolder,
-  loadGfx
+  loadGfx,
+  onEquipItem
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -62,6 +63,13 @@ export default function ItemList({
   const handleDragStart = (e, item) => {
     e.dataTransfer.setData('application/json', JSON.stringify(item));
     e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleDoubleClick = (item) => {
+    // Only equip if it's an equippable item type (10-21)
+    if (item.type >= 10 && item.type <= 21 && onEquipItem) {
+      onEquipItem(item);
+    }
   };
 
   return (
@@ -131,6 +139,7 @@ export default function ItemList({
                 key={item.id}
                 className={`item-row ${selectedItemId === item.id ? 'selected' : ''}`}
                 onClick={() => onSelectItem(item.id)}
+                onDoubleClick={() => handleDoubleClick(item)}
                 draggable={true}
                 onDragStart={(e) => handleDragStart(e, item)}
               >

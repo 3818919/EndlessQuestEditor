@@ -80,12 +80,38 @@ GFX files (`.egf`) are PE (Portable Executable) format files containing embedded
 
 **Character Animation Graphics**:
 - `gfx008.egf`: Skin sprites (standing, walking, attacking)
+- `gfx011.egf`: Male boots sprites
+- `gfx012.egf`: Female boots sprites
 - `gfx013.egf`: Male armor sprites
 - `gfx014.egf`: Female armor sprites
+- `gfx015.egf`: Male hat/helmet sprites
+- `gfx016.egf`: Female hat/helmet sprites
 - `gfx017.egf`: Male weapon sprites
 - `gfx018.egf`: Female weapon sprites
 - `gfx019.egf`: Male back/shield items
 - `gfx020.egf`: Female back/shield items
+
+## Animation System
+
+The character animation system is a modular architecture that renders equipment on animated character sprites. It's organized into several focused modules:
+
+### Module Overview
+
+- **character-animator.js**: Main orchestrator that manages state and coordinates loading/rendering
+- **constants.js**: Core enums (Gender, CharacterFrame, ItemType) and GFX file mappings
+- **offsets.js**: Equipment positioning tables for proper alignment across all character poses
+- **sprite-loader.js**: Handles loading sprites from GFX files and bitmap processing
+- **renderer.js**: Canvas drawing functions for different animation states
+
+### Key Features
+
+- **Multi-layered Rendering**: Sprites are drawn in proper Z-order (back items → skin → boots → armor → weapon → shield → hair → helmet)
+- **Frame-based Animation**: Walking (4 frames), attacking (2 frames), and standing poses
+- **Gender Support**: Separate sprites and offsets for male and female characters
+- **Equipment Offsets**: Precise pixel offsets ensure equipment aligns with character body in every pose
+- **Zoom Support**: 1x-4x zoom with pixel-perfect scaling
+
+For detailed information about the animation system, see [ANIMATION_SYSTEM.md](ANIMATION_SYSTEM.md).
 
 ## Project Structure
 
@@ -96,7 +122,12 @@ eo-pub-editor/
 │   ├── preload.js           # Preload script for IPC
 │   ├── eif-parser.js        # EIF file parser
 │   ├── gfx-loader.js        # GFX file loader
-│   ├── character-animator.js # Character animation system
+│   ├── animation/           # Character animation system
+│   │   ├── character-animator.js  # Main animator class
+│   │   ├── constants.js           # Enums and constants
+│   │   ├── offsets.js             # Equipment offset tables
+│   │   ├── sprite-loader.js       # Sprite loading utilities
+│   │   └── renderer.js            # Canvas rendering functions
 │   └── renderer/
 │       ├── index.html       # Main UI
 │       ├── styles.css       # Styling
