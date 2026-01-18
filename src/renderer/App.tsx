@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import LandingScreen from './pages/LandingScreen';
 import EditorPage from './pages/EditorPage';
-import { useEIFData } from './hooks/useEIFData';
+import { usePubData } from './hooks/usePubData';
 import { useGFXCache } from './hooks/useGFXCache';
 import { useEquipment } from './hooks/useEquipment';
 import { useAppearance } from './hooks/useAppearance';
@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const { 
     eifData, 
     enfData,
+    ecfData,
     pubDirectory, 
     activeTab,
     setActiveTab,
@@ -36,10 +37,15 @@ const App: React.FC = () => {
     deleteNpc,
     duplicateNpc,
     updateNpc,
+    addClass,
+    deleteClass,
+    duplicateClass,
+    updateClass,
     setEifData,
     setEnfData,
+    setEcfData,
     setPubDirectory
-  } = useEIFData(markAsUnsaved);
+  } = usePubData(markAsUnsaved);
 
   // Project management hook
   const {
@@ -67,24 +73,28 @@ const App: React.FC = () => {
     exportItems,
     exportNpcs,
     exportDrops,
+    exportClasses,
     importItems,
     importNpcs,
-    importDrops
+    importDrops,
+    importClasses
   } = useFileImportExport({
     eifData,
     enfData,
+    ecfData,
     dropsData,
     dataFolder,
     currentProject,
     setEifData,
     setEnfData,
+    setEcfData,
     setDropsData
   });
   
   // Wrapper for createProject hook to update local state
-  const createProject = async (projectName: string, gfxPath: string, eifPath?: string, enfPath?: string, dropsPath?: string) => {
+  const createProject = async (projectName: string, gfxPath: string, eifPath?: string, enfPath?: string, ecfPath?: string, dropsPath?: string) => {
     try {
-      await createProjectHook(projectName, gfxPath, eifPath, enfPath, dropsPath);
+      await createProjectHook(projectName, gfxPath, eifPath, enfPath, ecfPath, dropsPath);
       
       // Load the project data into local state
       const projectData = await selectProjectHook(projectName);
@@ -116,6 +126,7 @@ const App: React.FC = () => {
         ProjectService.restoreProjectState(projectData, {
           setEifData,
           setEnfData,
+          setEcfData,
           setDropsData,
           restoreEquipment,
           setGender,
@@ -239,6 +250,7 @@ const App: React.FC = () => {
         currentProject,
         eifData,
         enfData,
+        ecfData,
         dropsData,
         equippedItems,
         appearance: {
@@ -278,6 +290,7 @@ const App: React.FC = () => {
     // Clear data to free memory
     setEifData({ version: 1, items: {} });
     setEnfData({ version: 1, npcs: {} });
+    setEcfData({ version: 1, classes: {} });
     setDropsData(new Map());
     setPubDirectory(null);
     
@@ -322,6 +335,7 @@ const App: React.FC = () => {
       setActiveTab={setActiveTab}
       eifData={eifData}
       enfData={enfData}
+      ecfData={ecfData}
       dropsData={dropsData}
       pubDirectory={pubDirectory}
       addItem={addItem}
@@ -332,6 +346,10 @@ const App: React.FC = () => {
       deleteNpc={deleteNpc}
       duplicateNpc={duplicateNpc}
       updateNpc={updateNpc}
+      addClass={addClass}
+      deleteClass={deleteClass}
+      duplicateClass={duplicateClass}
+      updateClass={updateClass}
       updateNpcDrops={updateNpcDrops}
       saveDropsFile={saveDropsFile}
       equippedItems={equippedItems}
@@ -362,9 +380,11 @@ const App: React.FC = () => {
       importItems={importItems}
       importNpcs={importNpcs}
       importDrops={importDrops}
+      importClasses={importClasses}
       exportItems={exportItems}
       exportNpcs={exportNpcs}
       exportDrops={exportDrops}
+      exportClasses={exportClasses}
       loadDirectory={loadDirectory}
     />
   );

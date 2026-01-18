@@ -5,6 +5,7 @@ interface SaveProjectOptions {
   currentProject: string;
   eifData: any;
   enfData: any;
+  ecfData: any;
   dropsData: Map<number, any[]>;
   equippedItems: Record<string, any>;
   appearance: {
@@ -18,6 +19,7 @@ interface SaveProjectOptions {
 interface ProjectData {
   items?: Record<number, any>;
   npcs?: Record<number, any>;
+  classes?: Record<number, any>;
   drops?: Map<number, any[]>;
   equipment?: {
     equippedItems: Record<string, any>;
@@ -43,6 +45,7 @@ export class ProjectService {
       currentProject,
       eifData,
       enfData,
+      ecfData,
       dropsData,
       equippedItems,
       appearance
@@ -83,6 +86,15 @@ export class ProjectService {
     }
     console.log('npcs.json saved successfully');
 
+    // Save classes.json
+    const classesArray = recordToArray(ecfData.classes);
+    const classesPath = `${projectFolder}/classes.json`;
+    result = await window.electronAPI.writeTextFile(classesPath, JSON.stringify(classesArray, null, 2));
+    if (!result.success) {
+      throw new Error(`Failed to save classes.json: ${result.error}`);
+    }
+    console.log('classes.json saved successfully');
+
     // Save drops.json
     const dropsArray = Array.from(dropsData.entries()).map(([npcId, drops]) => ({ npcId, drops }));
     const dropsPath = `${projectFolder}/drops.json`;
@@ -113,6 +125,7 @@ export class ProjectService {
     callbacks: {
       setEifData: (data: any) => void;
       setEnfData: (data: any) => void;
+      setEcfData: (data: any) => void;
       setDropsData: (data: Map<number, any[]>) => void;
       restoreEquipment: (equipment: Record<string, any>) => void;
       setGender: (gender: number) => void;
@@ -124,6 +137,7 @@ export class ProjectService {
     const {
       setEifData,
       setEnfData,
+      setEcfData,
       setDropsData,
       restoreEquipment,
       setGender,
@@ -138,6 +152,10 @@ export class ProjectService {
     
     if (projectData.npcs) {
       setEnfData({ version: 1, npcs: projectData.npcs });
+    }
+    
+    if (projectData.classes) {
+      setEcfData({ version: 1, classes: projectData.classes });
     }
     
     if (projectData.drops) {

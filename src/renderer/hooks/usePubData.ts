@@ -1,19 +1,22 @@
 import { useState, useCallback, useEffect } from 'react';
 import { EIFParser } from '../../eif-parser';
 import { ENFParser } from '../../enf-parser';
+import { ECFParser } from '../../ecf-parser';
 
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && window.electronAPI;
 
-export function useEIFData(onChangeCallback?: () => void) {
+export function usePubData(onChangeCallback?: () => void) {
   const [eifData, setEifData] = useState({ version: 1, items: {} });
   const [enfData, setEnfData] = useState({ version: 1, npcs: {} });
+  const [ecfData, setEcfData] = useState({ version: 1, classes: {} });
   const [pubDirectory, setPubDirectory] = useState(
     localStorage.getItem('lastPubDirectory') || null
   );
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [selectedNpcId, setSelectedNpcId] = useState(null);
-  const [activeTab, setActiveTab] = useState<'items' | 'npcs'>('items');
+  const [selectedClassId, setSelectedClassId] = useState(null);
+  const [activeTab, setActiveTab] = useState<'items' | 'npcs' | 'classes'>('items');
   const [isInitialized, setIsInitialized] = useState(false);
 
   const loadDirectory = useCallback(async () => {
@@ -489,15 +492,83 @@ export function useEIFData(onChangeCallback?: () => void) {
     }
   }, [onChangeCallback]);
 
+  // Class CRUD operations
+  const addClass = useCallback(() => {
+    const newId = Math.max(0, ...Object.keys(ecfData.classes).map(Number)) + 1;
+    const newClass = {
+      id: newId,
+      name: `New Class ${newId}`,
+      parentType: 0,
+      statGroup: 0,
+      str: 0,
+      int: 0,
+      wis: 0,
+      agi: 0,
+      con: 0,
+      cha: 0
+    };
+
+    setEcfData(prev => ({
+      ...prev,
+      classes: { ...prev.classes, [newId]: newClass }
+    }));
+    setSelectedClassId(newId);
+  }, [ecfData]);
+
+  const deleteClass = useCallback((classId) => {
+    if (!confirm(`Delete class ${classId}?`)) return;
+
+    setEcfData(prev => {
+      const newClasses = { ...prev.classes };
+      delete newClasses[classId];
+      return { ...prev, classes: newClasses };
+    });
+
+    if (selectedClassId === classId) {
+      const remainingIds = Object.keys(ecfData.classes).filter(id => parseInt(id) !== classId);
+      setSelectedClassId(remainingIds.length > 0 ? parseInt(remainingIds[0]) : null);
+    }
+  }, [ecfData, selectedClassId]);
+
+  const duplicateClass = useCallback((classId) => {
+    const cls = ecfData.classes[classId];
+    if (!cls) return;
+
+    const newId = Math.max(0, ...Object.keys(ecfData.classes).map(Number)) + 1;
+    const newClass = { ...cls, id: newId, name: `${cls.name} (Copy)` };
+
+    setEcfData(prev => ({
+      ...prev,
+      classes: { ...prev.classes, [newId]: newClass }
+    }));
+    setSelectedClassId(newId);
+  }, [ecfData]);
+
+  const updateClass = useCallback((classId, updates) => {
+    setEcfData(prev => ({
+      ...prev,
+      classes: {
+        ...prev.classes,
+        [classId]: { ...prev.classes[classId], ...updates }
+      }
+    }));
+    if (onChangeCallback) {
+      onChangeCallback();
+    }
+  }, [onChangeCallback]);
+
   return {
     eifData,
     enfData,
+    ecfData,
     pubDirectory,
     selectedItemId,
     selectedNpcId,
+    selectedClassId,
     activeTab,
     setSelectedItemId,
     setSelectedNpcId,
+    setSelectedClassId,
     setActiveTab,
     loadDirectory,
     loadDirectoryFromPath,
@@ -510,8 +581,14 @@ export function useEIFData(onChangeCallback?: () => void) {
     deleteNpc,
     duplicateNpc,
     updateNpc,
+    addClass,
+    deleteClass,
+    duplicateClass,
+    updateClass,
     setEifData,
     setEnfData,
+    setEcfData,
     setPubDirectory
   };
 }
+

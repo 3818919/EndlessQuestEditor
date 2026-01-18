@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { EIFParser } from '../../eif-parser';
 import { ENFParser } from '../../enf-parser';
+import { ECFParser } from '../../ecf-parser';
 import { recordToArray, arrayToRecord } from '../../utils/dataTransforms';
 
 interface ProjectConfig {
@@ -61,6 +62,7 @@ export const useProject = (): UseProjectReturn => {
     gfxPath: string,
     eifPath?: string,
     enfPath?: string,
+    ecfPath?: string,
     dropsPath?: string
   ) => {
     if (!dataFolder || !isElectron || !window.electronAPI) {
@@ -149,6 +151,35 @@ export const useProject = (): UseProjectReturn => {
         importedFiles.push('NPCs');
       } else {
         console.error('Failed to read ENF file:', fileData.error);
+      }
+    }
+
+    // Import ECF if provided
+    if (ecfPath) {
+      console.log('Importing ECF from:', ecfPath);
+      const fileData = await window.electronAPI.readFile(ecfPath);
+      if (fileData.success) {
+        const ecfArray = new Uint8Array(fileData.data);
+        console.log('ECF file read successfully, size:', ecfArray.byteLength);
+        const parsedData = ECFParser.parse(ecfArray.buffer);
+        console.log('Parsed ECF data:', parsedData);
+        console.log('Number of records:', parsedData.records?.length);
+        
+        const classes: Record<number, any> = {};
+        for (const classRecord of parsedData.records) {
+          classes[classRecord.id] = classRecord;
+        }
+        console.log('Classes object created, keys:', Object.keys(classes).length);
+        
+        const classesArray = recordToArray(classes);
+        console.log('Classes array created, length:', classesArray.length);
+        const classesPath = `${projectFolder}/classes.json`;
+        const writeResult = await window.electronAPI.writeTextFile(classesPath, JSON.stringify(classesArray, null, 2));
+        console.log('Classes write result:', writeResult);
+        console.log('Classes imported during project creation');
+        importedFiles.push('Classes');
+      } else {
+        console.error('Failed to read ECF file:', fileData.error);
       }
     }
 
@@ -263,6 +294,24 @@ export const useProject = (): UseProjectReturn => {
       } else {
         projectData.npcs = {};
         console.log('npcs.json not found, initialized as empty');
+      }
+      
+      // Load classes.json
+      const classesPath = `${projectFolder}/classes.json`;
+      result = await window.electronAPI.readTextFile(classesPath);
+      if (result.success) {
+        const classesData = JSON.parse(result.data);
+        if (Array.isArray(classesData)) {
+          projectData.classes = arrayToRecord(classesData);
+          console.log('classes.json loaded successfully');
+        } else {
+          projectData.classes = {};
+          console.log('classes.json is not an array, initialized as empty');
+        }
+        jsonFilesFound = true;
+      } else {
+        projectData.classes = {};
+        console.log('classes.json not found, initialized as empty');
       }
       
       // Load drops.json

@@ -34,9 +34,11 @@ interface Npc {
 interface NpcEditorProps {
   npc: Npc | null;
   onUpdate: (npcId: number, updates: Partial<Npc>) => void;
+  onDuplicateNpc: (id: number) => void;
+  onDeleteNpc: (id: number) => void;
 }
 
-const NpcEditor: React.FC<NpcEditorProps> = ({ npc, onUpdate }) => {
+const NpcEditor: React.FC<NpcEditorProps> = ({ npc, onUpdate, onDuplicateNpc, onDeleteNpc }) => {
   if (!npc) {
     return (
       <div className="editor-empty">
@@ -53,6 +55,22 @@ const NpcEditor: React.FC<NpcEditorProps> = ({ npc, onUpdate }) => {
     <div className="item-editor">
       <div className="editor-header">
         <h2>NPC #{npc.id}</h2>
+        <div className="editor-header-actions">
+          <button
+            className="btn btn-secondary"
+            onClick={() => onDuplicateNpc(npc.id)}
+            title="Duplicate this NPC"
+          >
+            Duplicate
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => onDeleteNpc(npc.id)}
+            title="Delete this NPC"
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
       <div className="editor-content">

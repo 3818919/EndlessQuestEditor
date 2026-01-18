@@ -1,8 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import ItemList from '../components/items/ItemList';
 import NpcList from '../components/npcs/NpcList';
+import ClassList from '../components/classes/ClassList';
 import ItemEditor from '../components/items/ItemEditor';
 import NpcEditor from '../components/npcs/NpcEditor';
+import ClassEditor from '../components/classes/ClassEditor';
 import DropsEditor from '../components/npcs/DropsEditor';
 import ItemDroppedBy from '../components/items/ItemDroppedBy';
 import CharacterPreview from '../components/items/CharacterPreview';
@@ -21,10 +23,11 @@ interface EditorPageProps {
   // Data
   eifData: any;
   enfData: any;
+  ecfData: any;
   dropsData: Map<number, any[]>;
   pubDirectory: string | null;
-  activeTab: 'items' | 'npcs';
-  setActiveTab: (tab: 'items' | 'npcs') => void;
+  activeTab: 'items' | 'npcs' | 'classes';
+  setActiveTab: (tab: 'items' | 'npcs' | 'classes') => void;
   
   // Items operations
   addItem: () => void;
@@ -37,6 +40,12 @@ interface EditorPageProps {
   deleteNpc: (id: number) => void;
   duplicateNpc: (id: number) => void;
   updateNpc: (id: number, updates: any) => void;
+  
+  // Classes operations
+  addClass: () => void;
+  deleteClass: (id: number) => void;
+  duplicateClass: (id: number) => void;
+  updateClass: (id: number, updates: any) => void;
   
   // Drops operations
   updateNpcDrops: (npcId: number, drops: any[]) => void;
@@ -77,9 +86,11 @@ interface EditorPageProps {
   importItems: () => Promise<void>;
   importNpcs: () => Promise<void>;
   importDrops: () => Promise<void>;
+  importClasses: () => Promise<void>;
   exportItems: () => Promise<void>;
   exportNpcs: () => Promise<void>;
   exportDrops: () => Promise<void>;
+  exportClasses: () => Promise<void>;
   
   // Legacy stubs
   loadDirectory: () => void;
@@ -88,6 +99,7 @@ interface EditorPageProps {
 const EditorPage: React.FC<EditorPageProps> = ({
   eifData,
   enfData,
+  ecfData,
   dropsData,
   pubDirectory,
   activeTab,
@@ -100,6 +112,10 @@ const EditorPage: React.FC<EditorPageProps> = ({
   deleteNpc,
   duplicateNpc,
   updateNpc,
+  addClass,
+  deleteClass,
+  duplicateClass,
+  updateClass,
   updateNpcDrops,
   saveDropsFile,
   equippedItems,
@@ -130,9 +146,11 @@ const EditorPage: React.FC<EditorPageProps> = ({
   importItems,
   importNpcs,
   importDrops,
+  importClasses,
   exportItems,
   exportNpcs,
   exportDrops,
+  exportClasses,
   loadDirectory
 }) => {
   // UI state - lives in EditorPage since it's editor-specific
@@ -143,6 +161,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [selectedNpcId, setSelectedNpcId] = useState<number | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
 
   // Resizable panel hook - only used in editor
   const {
@@ -156,6 +175,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
   // Derived values
   const selectedItem = selectedItemId !== null ? eifData.items[selectedItemId] : null;
   const selectedNpc = selectedNpcId !== null ? enfData.npcs[selectedNpcId] : null;
+  const selectedClass = selectedClassId !== null ? ecfData.classes[selectedClassId] : null;
 
   // Wrapper for equipItem to match PaperdollSlots signature
   const handleEquipItemFromId = useCallback((itemId: number, slotKey: string) => {
@@ -174,14 +194,16 @@ const EditorPage: React.FC<EditorPageProps> = ({
     <div className="app">
       <VerticalSidebar
         activeTab={activeTab}
-        onTabChange={(tab: string) => setActiveTab(tab as 'items' | 'npcs')}
+        onTabChange={(tab: string) => setActiveTab(tab as 'items' | 'npcs' | 'classes')}
         onSave={saveAllFiles}
         onImportItems={importItems}
         onImportNpcs={importNpcs}
         onImportDrops={importDrops}
+        onImportClasses={importClasses}
         onExportNpcs={exportNpcs}
         onExportItems={exportItems}
         onExportDrops={exportDrops}
+        onExportClasses={exportClasses}
         onSettings={() => setShowSettingsModal(true)}
         onReturnToProjects={returnToProjects}
         isSaveDisabled={!pubDirectory}
@@ -243,6 +265,25 @@ const EditorPage: React.FC<EditorPageProps> = ({
               preloadGfxBatch={preloadGfxBatch}
             />
           </div>
+          
+          <div style={{ 
+            display: activeTab === 'classes' ? 'flex' : 'none', 
+            flex: 1,
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            <ClassList
+              classes={ecfData.classes}
+              selectedClassId={selectedClassId}
+              onSelectClass={setSelectedClassId}
+              onAddClass={addClass}
+              onDeleteClass={deleteClass}
+              onDuplicateClass={duplicateClass}
+              showSettingsModal={showSettingsModal}
+              setShowSettingsModal={setShowSettingsModal}
+              leftPanelMinimized={leftPanelMinimized}
+            />
+          </div>
         </div>
         
         <div className="center-panel">
@@ -251,6 +292,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
               item={selectedItem}
               onUpdateItem={updateItem}
               onDuplicateItem={duplicateItem}
+              onDeleteItem={deleteItem}
               loadGfx={loadGfx}
               gfxFolder={gfxFolder}
               onSetGfxFolder={setGfxFolder}
@@ -262,10 +304,22 @@ const EditorPage: React.FC<EditorPageProps> = ({
             <NpcEditor
               npc={selectedNpc}
               onUpdate={updateNpc}
+              onDuplicateNpc={duplicateNpc}
+              onDeleteNpc={deleteNpc}
+            />
+          )}
+          
+          {activeTab === 'classes' && selectedClass && (
+            <ClassEditor
+              classData={selectedClass}
+              onUpdateClass={updateClass}
+              onDuplicateClass={duplicateClass}
+              onDeleteClass={deleteClass}
             />
           )}
         </div>
         
+        {activeTab !== 'classes' && (
         <div 
           className={`right-panel ${isResizing ? 'resizing' : ''} ${(isPanelMinimized || (activeTab === 'npcs' && !showPreview && npcTab !== 'drops') || (activeTab === 'items' && appearanceTab === 'droppedBy' && !selectedItem)) ? 'minimized' : ''}`}
           style={{ width: (isPanelMinimized || (activeTab === 'npcs' && !showPreview && npcTab !== 'drops') || (activeTab === 'items' && appearanceTab === 'droppedBy' && !selectedItem)) ? '60px' : `${rightPanelWidth}px` }}
@@ -449,6 +503,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
             </button>
           </div>
         </div>
+        )}
       </div>
       
       <StatusBar 

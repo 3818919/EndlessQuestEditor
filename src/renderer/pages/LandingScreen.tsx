@@ -16,7 +16,7 @@ interface ProjectConfig {
 
 interface LandingScreenProps {
   onSelectProject: (projectName: string) => void;
-  onCreateProject: (projectName: string, gfxPath: string, eifPath?: string, enfPath?: string, dropsPath?: string) => void;
+  onCreateProject: (projectName: string, gfxPath: string, eifPath?: string, enfPath?: string, ecfPath?: string, dropsPath?: string) => void;
   onDeleteProject?: (projectName: string) => void;
   dataDirectoryPath: string | null;
 }
@@ -33,6 +33,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
   const [newProjectGfxPath, setNewProjectGfxPath] = useState('');
   const [newProjectEifPath, setNewProjectEifPath] = useState('');
   const [newProjectEnfPath, setNewProjectEnfPath] = useState('');
+  const [newProjectEcfPath, setNewProjectEcfPath] = useState('');
   const [newProjectDropsPath, setNewProjectDropsPath] = useState('');
 
   // Load projects when component mounts
@@ -92,6 +93,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
       newProjectGfxPath.trim(),
       newProjectEifPath.trim(),
       newProjectEnfPath.trim(),
+      newProjectEcfPath.trim(),
       newProjectDropsPath.trim()
     );
     setShowCreateProject(false);
@@ -99,6 +101,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
     setNewProjectGfxPath('');
     setNewProjectEifPath('');
     setNewProjectEnfPath('');
+    setNewProjectEcfPath('');
     setNewProjectDropsPath('');
     loadProjects();
   };
@@ -131,6 +134,17 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
     ]);
     if (file) {
       setNewProjectEnfPath(file);
+    }
+  };
+
+  const handleSelectEcfPath = async () => {
+    if (!window.electronAPI) return;
+    
+    const file = await window.electronAPI.openFile([
+      { name: 'ECF Files', extensions: ['ecf'] }
+    ]);
+    if (file) {
+      setNewProjectEcfPath(file);
     }
   };
 
@@ -290,6 +304,25 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
                 />
                 {isElectron && (
                   <button onClick={handleSelectEnfPath} className="btn btn-secondary">
+                    Browse
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Classes File (ECF) - Optional</label>
+              <div className="input-with-button">
+                <input
+                  type="text"
+                  value={newProjectEcfPath}
+                  onChange={(e) => setNewProjectEcfPath(e.target.value)}
+                  placeholder="/path/to/classes.ecf"
+                  className="form-control"
+                  readOnly={isElectron}
+                />
+                {isElectron && (
+                  <button onClick={handleSelectEcfPath} className="btn btn-secondary">
                     Browse
                   </button>
                 )}

@@ -22,6 +22,7 @@ interface ItemEditorProps {
   item: Item;
   onUpdateItem: (id: number, updates: Partial<Item>) => void;
   onDuplicateItem: (id: number) => void;
+  onDeleteItem: (id: number) => void;
   loadGfx: (gfxNumber: number, resourceId?: number) => Promise<string | null>;
   gfxFolder: string;
   onSetGfxFolder: (folder: string) => void;
@@ -49,6 +50,7 @@ export default function ItemEditor({
   item, 
   onUpdateItem,
   onDuplicateItem,
+  onDeleteItem,
   loadGfx,
   gfxFolder,
   onSetGfxFolder,
@@ -135,6 +137,13 @@ export default function ItemEditor({
             title="Duplicate this item"
           >
             Duplicate
+          </button>
+          <button 
+            onClick={() => onDeleteItem(item.id)} 
+            className="btn btn-danger"
+            title="Delete this item"
+          >
+            Delete
           </button>
           <button 
             onClick={() => onEquipItem?.(item)}

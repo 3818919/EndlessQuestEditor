@@ -1,27 +1,32 @@
 import { useCallback } from 'react';
 import { EIFParser } from '../../eif-parser';
 import { ENFParser } from '../../enf-parser';
+import { ECFParser } from '../../ecf-parser';
 import { recordToArray } from '../../utils/dataTransforms';
 
 interface UseFileImportExportProps {
   eifData: { version: number; items: Record<number, any> };
   enfData: { version: number; npcs: Record<number, any> };
+  ecfData: { version: number; classes: Record<number, any> };
   dropsData: Map<number, any[]>;
   dataFolder: string;
   currentProject: string;
   setEifData: (data: any) => void;
   setEnfData: (data: any) => void;
+  setEcfData: (data: any) => void;
   setDropsData: (data: Map<number, any[]>) => void;
 }
 
 export const useFileImportExport = ({
   eifData,
   enfData,
+  ecfData,
   dropsData,
   dataFolder,
   currentProject,
   setEifData,
   setEnfData,
+  setEcfData,
   setDropsData
 }: UseFileImportExportProps) => {
   const isElectron = typeof window !== 'undefined' && window.electronAPI;
@@ -251,12 +256,76 @@ export const useFileImportExport = ({
     }
   }, [dataFolder, currentProject, setDropsData]);
 
+  const exportClasses = useCallback(async () => {
+    if (!isElectron || !window.electronAPI) return;
+    
+    try {
+      const result = await window.electronAPI.saveFile('dat001.ecf', [
+        { name: 'ECF Files', extensions: ['ecf'] }
+      ]);
+      
+      if (!result) return;
+      
+      const serializedData = ECFParser.serialize(ecfData);
+      const writeResult = await window.electronAPI.writeFile(result, serializedData);
+      
+      if (writeResult.success) {
+        alert(`Classes exported successfully to: ${result}`);
+      } else {
+        throw new Error(writeResult.error);
+      }
+    } catch (error) {
+      console.error('Error exporting classes:', error);
+      alert('Error exporting classes: ' + (error as Error).message);
+    }
+  }, [ecfData]);
+
+  const importClasses = useCallback(async () => {
+    if (!isElectron || !window.electronAPI) return;
+    
+    try {
+      const result = await window.electronAPI.openFile([
+        { name: 'ECF Files', extensions: ['ecf'] }
+      ]);
+      
+      if (!result) return;
+      
+      const fileData = await window.electronAPI.readFile(result);
+      if (fileData.success) {
+        const ecfArray = new Uint8Array(fileData.data);
+        const parsedData = ECFParser.parse(ecfArray.buffer);
+        
+        const classes: Record<number, any> = {};
+        for (const cls of parsedData.records) {
+          classes[cls.id] = cls;
+        }
+        
+        setEcfData({ version: 1, classes });
+        
+        // Save to project JSON
+        if (dataFolder && currentProject) {
+          const projectFolder = `${dataFolder}/${currentProject}`;
+          const classesArray = recordToArray(classes);
+          const classesPath = `${projectFolder}/classes.json`;
+          await window.electronAPI.writeTextFile(classesPath, JSON.stringify(classesArray, null, 2));
+        }
+        
+        alert(`${Object.keys(classes).length} classes imported successfully!`);
+      }
+    } catch (error) {
+      console.error('Error importing classes:', error);
+      alert('Error importing classes: ' + (error as Error).message);
+    }
+  }, [dataFolder, currentProject, setEcfData]);
+
   return {
     exportItems,
     exportNpcs,
     exportDrops,
+    exportClasses,
     importItems,
     importNpcs,
-    importDrops
+    importDrops,
+    importClasses
   };
 };

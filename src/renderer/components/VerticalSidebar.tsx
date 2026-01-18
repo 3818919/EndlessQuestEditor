@@ -1,10 +1,9 @@
 import React from 'react';
 import ListAltIcon from '@mui/icons-material/ListAlt';
-import PetsIcon from '@mui/icons-material/Pets';
-import SaveIcon from '@mui/icons-material/Save';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HomeIcon from '@mui/icons-material/Home';
 import FileMenu from './FileMenu';
+import { CrossedSwordsIcon, SkullCrossedBonesIcon } from './icons';
 
 interface VerticalSidebarProps {
   activeTab: string;
@@ -13,9 +12,11 @@ interface VerticalSidebarProps {
   onImportItems: () => void;
   onImportNpcs: () => void;
   onImportDrops: () => void;
+  onImportClasses: () => void;
   onExportNpcs: () => void;
   onExportItems: () => void;
   onExportDrops: () => void;
+  onExportClasses: () => void;
   onSettings: () => void;
   onReturnToProjects: () => void;
   isSaveDisabled: boolean;
@@ -30,9 +31,11 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   onImportItems,
   onImportNpcs,
   onImportDrops,
+  onImportClasses,
   onExportNpcs,
   onExportItems,
   onExportDrops,
+  onExportClasses,
   onSettings,
   onReturnToProjects,
   isSaveDisabled,
@@ -60,9 +63,11 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         onImportItems={onImportItems}
         onImportNpcs={onImportNpcs}
         onImportDrops={onImportDrops}
+        onImportClasses={onImportClasses}
         onExportNpcs={onExportNpcs}
         onExportItems={onExportItems}
         onExportDrops={onExportDrops}
+        onExportClasses={onExportClasses}
         disabled={isSaveDisabled}
       />
       <button
@@ -77,7 +82,14 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         onClick={() => handleTabClick('npcs')}
         title="NPCs / Monsters"
       >
-        <PetsIcon />
+        <SkullCrossedBonesIcon />
+      </button>
+      <button
+        className={`left-sidebar-button ${activeTab === 'classes' && !leftPanelMinimized ? 'active' : ''}`}
+        onClick={() => handleTabClick('classes')}
+        title="Classes"
+      >
+        <CrossedSwordsIcon />
       </button>
       <div className="sidebar-spacer"></div>
       <button
