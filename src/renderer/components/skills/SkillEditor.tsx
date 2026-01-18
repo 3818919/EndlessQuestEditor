@@ -1,5 +1,6 @@
 import React from 'react';
 import { SkillType, SkillTargetType, SkillTargetRestrict, SkillNature } from 'eolib';
+import CollapsibleSection from '../CollapsibleSection';
 
 interface Skill {
   id: number;
@@ -81,39 +82,29 @@ export default function SkillEditor({
 
       <div className="editor-content">
         {/* Basic Information */}
-        <div className="editor-section">
-          <h3>Basic Information</h3>
-          <div className="form-row">
-            <div className="form-group">
-              <label>ID</label>
-              <input
-                type="number"
-                value={skill.id}
-                disabled
-                className="read-only"
-              />
-            </div>
-            <div className="form-group flex-2">
-              <label>Name</label>
-              <input
-                type="text"
-                value={skill.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Skill name"
-              />
-            </div>
+        <CollapsibleSection title="Basic Information" defaultExpanded={true}>
+          <div className="form-group">
+            <label>Skill Name</label>
+            <input
+              type="text"
+              value={skill.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              placeholder="e.g., Fireball, Heal, Lightning Strike"
+              className="form-input"
+            />
           </div>
-          <div className="form-row">
-            <div className="form-group flex-3">
-              <label>Chant</label>
-              <input
-                type="text"
-                value={skill.chant}
-                onChange={(e) => handleInputChange('chant', e.target.value)}
-                placeholder="Chant text"
-              />
-            </div>
+
+          <div className="form-group">
+            <label>Chant Text</label>
+            <input
+              type="text"
+              value={skill.chant}
+              onChange={(e) => handleInputChange('chant', e.target.value)}
+              placeholder="Text displayed when casting"
+              className="form-input"
+            />
           </div>
+
           <div className="form-row">
             <div className="form-group">
               <label>Icon ID</label>
@@ -123,6 +114,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('iconId', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -133,6 +125,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('graphicId', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -143,14 +136,14 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('maxSkillLevel', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Cost & Casting */}
-        <div className="editor-section">
-          <h3>Cost & Casting</h3>
+        <CollapsibleSection title="Cost & Casting" defaultExpanded={true}>
           <div className="form-row">
             <div className="form-group">
               <label>TP Cost</label>
@@ -160,6 +153,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('tpCost', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -170,6 +164,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('spCost', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -180,20 +175,21 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('castTime', e.target.value)}
                 min="0"
                 max="252"
+                className="form-input"
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Type & Target */}
-        <div className="editor-section">
-          <h3>Type & Target</h3>
+        <CollapsibleSection title="Type & Target" defaultExpanded={true}>
           <div className="form-row">
             <div className="form-group">
               <label>Nature</label>
               <select
                 value={skill.nature}
                 onChange={(e) => handleNumberInputChange('nature', e.target.value)}
+                className="form-input"
               >
                 <option value={SkillNature.Spell}>Spell</option>
                 <option value={SkillNature.Skill}>Skill</option>
@@ -204,17 +200,22 @@ export default function SkillEditor({
               <select
                 value={skill.type}
                 onChange={(e) => handleNumberInputChange('type', e.target.value)}
+                className="form-input"
               >
                 <option value={SkillType.Heal}>Heal</option>
                 <option value={SkillType.Attack}>Attack</option>
                 <option value={SkillType.Bard}>Bard</option>
               </select>
             </div>
+          </div>
+
+          <div className="form-row">
             <div className="form-group">
               <label>Target Type</label>
               <select
                 value={skill.targetType}
                 onChange={(e) => handleNumberInputChange('targetType', e.target.value)}
+                className="form-input"
               >
                 <option value={SkillTargetType.Normal}>Normal</option>
                 <option value={SkillTargetType.Self}>Self</option>
@@ -227,14 +228,13 @@ export default function SkillEditor({
               <select
                 value={skill.targetRestrict}
                 onChange={(e) => handleNumberInputChange('targetRestrict', e.target.value)}
+                className="form-input"
               >
                 <option value={SkillTargetRestrict.Npc}>NPC</option>
                 <option value={SkillTargetRestrict.Friendly}>Friendly</option>
                 <option value={SkillTargetRestrict.Opponent}>Opponent</option>
               </select>
             </div>
-          </div>
-          <div className="form-row">
             <div className="form-group">
               <label>Target Time</label>
               <input
@@ -243,14 +243,14 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('targetTime', e.target.value)}
                 min="0"
                 max="252"
+                className="form-input"
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Element */}
-        <div className="editor-section">
-          <h3>Element</h3>
+        <CollapsibleSection title="Element" defaultExpanded={false}>
           <div className="form-row">
             <div className="form-group">
               <label>Element</label>
@@ -260,6 +260,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('element', e.target.value)}
                 min="0"
                 max="252"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -270,14 +271,14 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('elementPower', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Damage & Combat */}
-        <div className="editor-section">
-          <h3>Damage & Combat</h3>
+        <CollapsibleSection title="Damage & Combat" defaultExpanded={false}>
           <div className="form-row">
             <div className="form-group">
               <label>Min Damage</label>
@@ -287,6 +288,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('minDamage', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -297,6 +299,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('maxDamage', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -307,6 +310,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('accuracy', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
           </div>
@@ -319,6 +323,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('evade', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -329,6 +334,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('armor', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -339,14 +345,14 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('returnDamage', e.target.value)}
                 min="0"
                 max="252"
+                className="form-input"
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Healing */}
-        <div className="editor-section">
-          <h3>Healing</h3>
+        <CollapsibleSection title="Healing" defaultExpanded={false}>
           <div className="form-row">
             <div className="form-group">
               <label>HP Heal</label>
@@ -356,6 +362,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('hpHeal', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -366,6 +373,7 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('tpHeal', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -376,79 +384,89 @@ export default function SkillEditor({
                 onChange={(e) => handleNumberInputChange('spHeal', e.target.value)}
                 min="0"
                 max="252"
+                className="form-input"
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Stats */}
-        <div className="editor-section">
-          <h3>Stat Bonuses</h3>
+        <CollapsibleSection title="Stat Bonuses" defaultExpanded={false}>
+          <div className="form-help" style={{ marginBottom: '12px' }}>
+            Temporary stat bonuses applied when skill is active
+          </div>
+
           <div className="form-row">
             <div className="form-group">
-              <label>STR</label>
+              <label>STR (Strength)</label>
               <input
                 type="number"
                 value={skill.str}
                 onChange={(e) => handleNumberInputChange('str', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
-              <label>INT</label>
+              <label>INT (Intelligence)</label>
               <input
                 type="number"
                 value={skill.intl}
                 onChange={(e) => handleNumberInputChange('intl', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
-              <label>WIS</label>
+              <label>WIS (Wisdom)</label>
               <input
                 type="number"
                 value={skill.wis}
                 onChange={(e) => handleNumberInputChange('wis', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>AGI</label>
+              <label>AGI (Agility)</label>
               <input
                 type="number"
                 value={skill.agi}
                 onChange={(e) => handleNumberInputChange('agi', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
-              <label>CON</label>
+              <label>CON (Constitution)</label>
               <input
                 type="number"
                 value={skill.con}
                 onChange={(e) => handleNumberInputChange('con', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
-              <label>CHA</label>
+              <label>CHA (Charisma)</label>
               <input
                 type="number"
                 value={skill.cha}
                 onChange={(e) => handleNumberInputChange('cha', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
     </div>
   );

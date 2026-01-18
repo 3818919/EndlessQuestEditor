@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ItemType, ItemSize, ItemSubtype, ItemSpecial } from 'eolib';
+import CollapsibleSection from '../CollapsibleSection';
 
 interface Item {
   id: number;
@@ -156,360 +157,350 @@ export default function ItemEditor({
       </div>
 
       <div className="editor-content">
-        <div className="form-grid">
-          {/* Basic Properties */}
+        {/* Basic Information */}
+        <CollapsibleSection title="Basic Information" defaultExpanded={true}>
           <div className="form-group">
-            <label>Name</label>
+            <label>Item Name</label>
             <input
               type="text"
               value={item.name || ''}
               onChange={(e) => handleInputChange('name', e.target.value)}
               className="form-input"
+              placeholder="e.g., Iron Sword, Health Potion"
             />
           </div>
 
-          <div className="form-group">
-            <label>Graphic ID</label>
-            <input
-              type="number"
-              value={item.graphic || 0}
-              onChange={(e) => handleInputChange('graphic', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Graphic ID</label>
+              <input
+                type="number"
+                value={item.graphic || 0}
+                onChange={(e) => handleInputChange('graphic', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>DOL Graphic</label>
+              <input
+                type="number"
+                value={item.dolGraphic || 0}
+                onChange={(e) => handleInputChange('dolGraphic', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Type</label>
-            <select
-              value={item.type || 1}
-              onChange={(e) => handleInputChange('type', parseInt(e.target.value))}
-              className="form-select"
-            >
-              {enumToOptions(ItemType).map(({ value, label }) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Type</label>
+              <select
+                value={item.type || 1}
+                onChange={(e) => handleInputChange('type', parseInt(e.target.value))}
+                className="form-input"
+              >
+                {enumToOptions(ItemType).map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Sub Type</label>
+              <select
+                value={item.subType || 0}
+                onChange={(e) => handleInputChange('subType', parseInt(e.target.value))}
+                className="form-input"
+              >
+                {enumToOptions(ItemSubtype).map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Special</label>
+              <select
+                value={item.special || 0}
+                onChange={(e) => handleInputChange('special', parseInt(e.target.value))}
+                className="form-input"
+              >
+                {enumToOptions(ItemSpecial).map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Sub Type</label>
-            <select
-              value={item.subType || 0}
-              onChange={(e) => handleInputChange('subType', parseInt(e.target.value))}
-              className="form-select"
-            >
-              {enumToOptions(ItemSubtype).map(({ value, label }) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Gender</label>
+              <select
+                value={item.gender ?? 2}
+                onChange={(e) => handleInputChange('gender', parseInt(e.target.value))}
+                className="form-input"
+                disabled={item.type < 10 || item.type > 21}
+                title={item.type < 10 || item.type > 21 ? "Gender only applies to equippable items" : ""}
+              >
+                <option value="2">No Gender</option>
+                <option value="0">Female</option>
+                <option value="1">Male</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Weight</label>
+              <input
+                type="number"
+                value={item.weight || 0}
+                onChange={(e) => handleInputChange('weight', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Size</label>
+              <select
+                value={item.size || 0}
+                onChange={(e) => handleInputChange('size', parseInt(e.target.value))}
+                className="form-input"
+              >
+                {enumToOptions(ItemSize).map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        {/* Combat Stats */}
+        <CollapsibleSection title="Combat Stats" defaultExpanded={false}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>HP</label>
+              <input
+                type="number"
+                value={item.hp || 0}
+                onChange={(e) => handleInputChange('hp', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>TP</label>
+              <input
+                type="number"
+                value={item.tp || 0}
+                onChange={(e) => handleInputChange('tp', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Special</label>
-            <select
-              value={item.special || 0}
-              onChange={(e) => handleInputChange('special', parseInt(e.target.value))}
-              className="form-select"
-            >
-              {enumToOptions(ItemSpecial).map(({ value, label }) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Min Damage</label>
+              <input
+                type="number"
+                value={item.minDamage || 0}
+                onChange={(e) => handleInputChange('minDamage', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Max Damage</label>
+              <input
+                type="number"
+                value={item.maxDamage || 0}
+                onChange={(e) => handleInputChange('maxDamage', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
-          {/* Stats */}
-          <div className="form-group">
-            <label>HP</label>
-            <input
-              type="number"
-              value={item.hp || 0}
-              onChange={(e) => handleInputChange('hp', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '100px' }}
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Accuracy</label>
+              <input
+                type="number"
+                value={item.accuracy || 0}
+                onChange={(e) => handleInputChange('accuracy', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Evade</label>
+              <input
+                type="number"
+                value={item.evade || 0}
+                onChange={(e) => handleInputChange('evade', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Armor</label>
+              <input
+                type="number"
+                value={item.armor || 0}
+                onChange={(e) => handleInputChange('armor', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        {/* Stat Bonuses */}
+        <CollapsibleSection title="Stat Bonuses" defaultExpanded={false}>
+          <div className="form-help" style={{ marginBottom: '12px' }}>
+            Stat bonuses granted when item is equipped or used
           </div>
 
-          <div className="form-group">
-            <label>TP</label>
-            <input
-              type="number"
-              value={item.tp || 0}
-              onChange={(e) => handleInputChange('tp', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '100px' }}
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>STR (Strength)</label>
+              <input
+                type="number"
+                value={item.str || 0}
+                onChange={(e) => handleInputChange('str', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>INT (Intelligence)</label>
+              <input
+                type="number"
+                value={item.int || 0}
+                onChange={(e) => handleInputChange('int', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>WIS (Wisdom)</label>
+              <input
+                type="number"
+                value={item.wis || 0}
+                onChange={(e) => handleInputChange('wis', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>AGI (Agility)</label>
+              <input
+                type="number"
+                value={item.agi || 0}
+                onChange={(e) => handleInputChange('agi', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>CON (Constitution)</label>
+              <input
+                type="number"
+                value={item.con || 0}
+                onChange={(e) => handleInputChange('con', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>CHA (Charisma)</label>
+              <input
+                type="number"
+                value={item.cha || 0}
+                onChange={(e) => handleInputChange('cha', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        {/* Requirements */}
+        <CollapsibleSection title="Requirements" defaultExpanded={false}>
+          <div className="form-help" style={{ marginBottom: '12px' }}>
+            Requirements to use or equip this item
           </div>
 
-          <div className="form-group">
-            <label>Min Damage</label>
-            <input
-              type="number"
-              value={item.minDamage || 0}
-              onChange={(e) => handleInputChange('minDamage', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '100px' }}
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Level Requirement</label>
+              <input
+                type="number"
+                value={item.levelReq || 0}
+                onChange={(e) => handleInputChange('levelReq', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Class Requirement</label>
+              <input
+                type="number"
+                value={item.classReq || 0}
+                onChange={(e) => handleInputChange('classReq', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Max Damage</label>
-            <input
-              type="number"
-              value={item.maxDamage || 0}
-              onChange={(e) => handleInputChange('maxDamage', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '100px' }}
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>STR Requirement</label>
+              <input
+                type="number"
+                value={item.strReq || 0}
+                onChange={(e) => handleInputChange('strReq', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>INT Requirement</label>
+              <input
+                type="number"
+                value={item.intReq || 0}
+                onChange={(e) => handleInputChange('intReq', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>WIS Requirement</label>
+              <input
+                type="number"
+                value={item.wisReq || 0}
+                onChange={(e) => handleInputChange('wisReq', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
-
-          <div className="form-group">
-            <label>Accuracy</label>
-            <input
-              type="number"
-              value={item.accuracy || 0}
-              onChange={(e) => handleInputChange('accuracy', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>AGI Requirement</label>
+              <input
+                type="number"
+                value={item.agiReq || 0}
+                onChange={(e) => handleInputChange('agiReq', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>CON Requirement</label>
+              <input
+                type="number"
+                value={item.conReq || 0}
+                onChange={(e) => handleInputChange('conReq', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>CHA Requirement</label>
+              <input
+                type="number"
+                value={item.chaReq || 0}
+                onChange={(e) => handleInputChange('chaReq', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
-
-          <div className="form-group">
-            <label>Evade</label>
-            <input
-              type="number"
-              value={item.evade || 0}
-              onChange={(e) => handleInputChange('evade', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Armor</label>
-            <input
-              type="number"
-              value={item.armor || 0}
-              onChange={(e) => handleInputChange('armor', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          {/* Stat Bonuses */}
-          <div className="form-group">
-            <label>STR</label>
-            <input
-              type="number"
-              value={item.str || 0}
-              onChange={(e) => handleInputChange('str', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>INT</label>
-            <input
-              type="number"
-              value={item.int || 0}
-              onChange={(e) => handleInputChange('int', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>WIS</label>
-            <input
-              type="number"
-              value={item.wis || 0}
-              onChange={(e) => handleInputChange('wis', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>AGI</label>
-            <input
-              type="number"
-              value={item.agi || 0}
-              onChange={(e) => handleInputChange('agi', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>CON</label>
-            <input
-              type="number"
-              value={item.con || 0}
-              onChange={(e) => handleInputChange('con', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>CHA</label>
-            <input
-              type="number"
-              value={item.cha || 0}
-              onChange={(e) => handleInputChange('cha', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          {/* Equipment Properties */}
-          <div className="form-group">
-            <label>DOL Graphic</label>
-            <input
-              type="number"
-              value={item.dolGraphic || 0}
-              onChange={(e) => handleInputChange('dolGraphic', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '100px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Gender</label>
-            <select
-              value={item.gender ?? 2}
-              onChange={(e) => handleInputChange('gender', parseInt(e.target.value))}
-              className="form-select"
-              disabled={item.type < 10 || item.type > 21}
-              title={item.type < 10 || item.type > 21 ? "Gender only applies to equippable items" : ""}
-            >
-              <option value="2">No Gender</option>
-              <option value="0">Female</option>
-              <option value="1">Male</option>
-            </select>
-          </div>
-
-          {/* Requirements */}
-          <div className="form-group">
-            <label>Level Req</label>
-            <input
-              type="number"
-              value={item.levelReq || 0}
-              onChange={(e) => handleInputChange('levelReq', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Class Req</label>
-            <input
-              type="number"
-              value={item.classReq || 0}
-              onChange={(e) => handleInputChange('classReq', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>STR Req</label>
-            <input
-              type="number"
-              value={item.strReq || 0}
-              onChange={(e) => handleInputChange('strReq', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>INT Req</label>
-            <input
-              type="number"
-              value={item.intReq || 0}
-              onChange={(e) => handleInputChange('intReq', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>WIS Req</label>
-            <input
-              type="number"
-              value={item.wisReq || 0}
-              onChange={(e) => handleInputChange('wisReq', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>AGI Req</label>
-            <input
-              type="number"
-              value={item.agiReq || 0}
-              onChange={(e) => handleInputChange('agiReq', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>CON Req</label>
-            <input
-              type="number"
-              value={item.conReq || 0}
-              onChange={(e) => handleInputChange('conReq', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>CHA Req</label>
-            <input
-              type="number"
-              value={item.chaReq || 0}
-              onChange={(e) => handleInputChange('chaReq', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Weight</label>
-            <input
-              type="number"
-              value={item.weight || 0}
-              onChange={(e) => handleInputChange('weight', parseInt(e.target.value) || 0)}
-              className="form-input"
-              style={{ width: '80px' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Size</label>
-            <select
-              value={item.size || 0}
-              onChange={(e) => handleInputChange('size', parseInt(e.target.value))}
-              className="form-input"
-              style={{ width: '100px' }}
-            >
-              {enumToOptions(ItemSize).map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Item Previews */}
-        <div className="item-previews-section">
-          <h3>Item Graphics</h3>
-          
+        <CollapsibleSection title="Item Graphics" defaultExpanded={true}>
           {item.type === 2 && (
             <div className="form-group">
               <label>Amount (for money preview)</label>
@@ -541,7 +532,7 @@ export default function ItemEditor({
               </div>
             )}
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { EIFParser } from '../../eif-parser';
 import { ENFParser } from '../../enf-parser';
 import { ECFParser } from '../../ecf-parser';
 import { ESFParser } from '../../esf-parser';
+import { InnRecord, InnQuestionRecord } from 'eolib';
 
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && window.electronAPI;
@@ -12,6 +13,7 @@ export function usePubData(onChangeCallback?: () => void) {
   const [enfData, setEnfData] = useState({ version: 1, npcs: {} });
   const [ecfData, setEcfData] = useState({ version: 1, classes: {} });
   const [esfData, setEsfData] = useState({ version: 1, skills: {} });
+  const [innData, setInnData] = useState({ version: 1, inns: [] });
   const [pubDirectory, setPubDirectory] = useState(
     localStorage.getItem('lastPubDirectory') || null
   );
@@ -19,7 +21,8 @@ export function usePubData(onChangeCallback?: () => void) {
   const [selectedNpcId, setSelectedNpcId] = useState(null);
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [selectedSkillId, setSelectedSkillId] = useState(null);
-  const [activeTab, setActiveTab] = useState<'items' | 'npcs' | 'classes' | 'skills'>('items');
+  const [selectedInnIndex, setSelectedInnIndex] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'items' | 'npcs' | 'classes' | 'skills' | 'inns'>('items');
   const [isInitialized, setIsInitialized] = useState(false);
 
   const loadDirectory = useCallback(async () => {
@@ -645,21 +648,108 @@ export function usePubData(onChangeCallback?: () => void) {
     }
   }, [onChangeCallback]);
 
+  // Inn operations
+  const addInn = useCallback(() => {
+    const newInn = Object.assign(new InnRecord(), {
+      name: `New Inn ${innData.inns.length + 1}`,
+      behaviorId: 0,
+      spawnMap: 0,
+      spawnX: 0,
+      spawnY: 0,
+      sleepMap: 0,
+      sleepX: 0,
+      sleepY: 0,
+      alternateSpawnEnabled: false,
+      alternateSpawnMap: 0,
+      alternateSpawnX: 0,
+      alternateSpawnY: 0,
+      questions: [
+        Object.assign(new InnQuestionRecord(), { question: '', answer: '' }),
+        Object.assign(new InnQuestionRecord(), { question: '', answer: '' }),
+        Object.assign(new InnQuestionRecord(), { question: '', answer: '' })
+      ]
+    });
+
+    setInnData(prev => ({
+      ...prev,
+      inns: [...prev.inns, newInn]
+    }));
+    
+    setSelectedInnIndex(innData.inns.length);
+    if (onChangeCallback) {
+      onChangeCallback();
+    }
+  }, [innData.inns.length, onChangeCallback]);
+
+  const deleteInn = useCallback((index: number) => {
+    setInnData(prev => ({
+      ...prev,
+      inns: prev.inns.filter((_, i) => i !== index)
+    }));
+    
+    if (selectedInnIndex === index) {
+      setSelectedInnIndex(innData.inns.length > 1 ? 0 : null);
+    } else if (selectedInnIndex !== null && selectedInnIndex > index) {
+      setSelectedInnIndex(selectedInnIndex - 1);
+    }
+    
+    if (onChangeCallback) {
+      onChangeCallback();
+    }
+  }, [innData.inns.length, selectedInnIndex, onChangeCallback]);
+
+  const duplicateInn = useCallback((index: number) => {
+    const innToDuplicate = innData.inns[index];
+    if (!innToDuplicate) return;
+
+    const duplicatedInn = Object.assign(new InnRecord(), {
+      ...innToDuplicate,
+      name: `${innToDuplicate.name} (Copy)`,
+      questions: innToDuplicate.questions?.map(q => 
+        Object.assign(new InnQuestionRecord(), { ...q })
+      ) || []
+    });
+
+    setInnData(prev => ({
+      ...prev,
+      inns: [...prev.inns, duplicatedInn]
+    }));
+    
+    setSelectedInnIndex(innData.inns.length);
+    if (onChangeCallback) {
+      onChangeCallback();
+    }
+  }, [innData.inns, onChangeCallback]);
+
+  const updateInn = useCallback((index: number, updates: Partial<InnRecord>) => {
+    setInnData(prev => ({
+      ...prev,
+      inns: prev.inns.map((inn, i) => i === index ? { ...inn, ...updates } : inn)
+    }));
+    
+    if (onChangeCallback) {
+      onChangeCallback();
+    }
+  }, [onChangeCallback]);
+
   return {
     eifData,
     enfData,
     ecfData,
     esfData,
+    innData,
     pubDirectory,
     selectedItemId,
     selectedNpcId,
     selectedClassId,
     selectedSkillId,
+    selectedInnIndex,
     activeTab,
     setSelectedItemId,
     setSelectedNpcId,
     setSelectedClassId,
     setSelectedSkillId,
+    setSelectedInnIndex,
     setActiveTab,
     loadDirectory,
     loadDirectoryFromPath,
@@ -680,10 +770,15 @@ export function usePubData(onChangeCallback?: () => void) {
     deleteSkill,
     duplicateSkill,
     updateSkill,
+    addInn,
+    deleteInn,
+    duplicateInn,
+    updateInn,
     setEifData,
     setEnfData,
     setEcfData,
     setEsfData,
+    setInnData,
     setPubDirectory
   };
 }

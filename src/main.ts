@@ -283,6 +283,45 @@ ipcMain.handle('file:deleteDirectory', async (event, dirPath) => {
   }
 });
 
+// Check if path exists
+ipcMain.handle('file:pathExists', async (event, filePath) => {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+// Rename file or directory
+ipcMain.handle('file:rename', async (event, oldPath, newPath) => {
+  try {
+    await fs.rename(oldPath, newPath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error renaming:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Select folder dialog
+ipcMain.handle('dialog:selectFolder', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    });
+    
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, error: 'No folder selected' };
+    }
+    
+    return { success: true, path: result.filePaths[0] };
+  } catch (error) {
+    console.error('Error selecting folder:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Preload all GFX files in the background with progress updates
 ipcMain.handle('file:preloadAllGFX', async (event, gfxPath) => {
   try {

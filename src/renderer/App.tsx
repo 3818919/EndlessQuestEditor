@@ -15,6 +15,26 @@ const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 const App: React.FC = () => {
   const [dropsData, setDropsData] = useState<Map<number, any[]>>(new Map());
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+    }
+  }, []);
+  
+  // Apply theme to document root
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+  
+  // Toggle theme function
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  }, []);
   
   // Mark changes as unsaved
   const markAsUnsaved = useCallback(() => {
@@ -26,6 +46,7 @@ const App: React.FC = () => {
     enfData,
     ecfData,
     esfData,
+    innData,
     pubDirectory, 
     activeTab,
     setActiveTab,
@@ -46,23 +67,31 @@ const App: React.FC = () => {
     deleteSkill,
     duplicateSkill,
     updateSkill,
+    addInn,
+    deleteInn,
+    duplicateInn,
+    updateInn,
     setEifData,
     setEnfData,
     setEcfData,
     setEsfData,
+    setInnData,
     setPubDirectory
   } = usePubData(markAsUnsaved);
 
   // Project management hook
   const {
     currentProject,
-    dataFolder,
+    projectName,
     gfxFolder,
+    pubDirectory: projectPubDirectory,
     createProject: createProjectHook,
     selectProject: selectProjectHook,
     deleteProject: deleteProjectHook,
+    updateProjectSettings,
     setCurrentProject,
-    setGfxFolder
+    setGfxFolder,
+    setPubDirectory: setProjectPubDirectory
   } = useProject();
 
   const { 
@@ -81,23 +110,26 @@ const App: React.FC = () => {
     exportDrops,
     exportClasses,
     exportSkills,
+    exportInns,
     importItems,
     importNpcs,
     importDrops,
     importClasses,
-    importSkills
+    importSkills,
+    importInns
   } = useFileImportExport({
     eifData,
     enfData,
     ecfData,
     esfData,
+    innData,
     dropsData,
-    dataFolder,
     currentProject,
     setEifData,
     setEnfData,
     setEcfData,
     setEsfData,
+    setInnData,
     setDropsData
   });
   
@@ -114,7 +146,6 @@ const App: React.FC = () => {
         if (projectData.classes) setEcfData({ version: 1, classes: projectData.classes });
         if (projectData.skills) setEsfData({ version: 1, skills: projectData.skills });
         if (projectData.drops) setDropsData(projectData.drops);
-        setPubDirectory(dataFolder);
       }
       
       const importMsg = [];
@@ -142,6 +173,7 @@ const App: React.FC = () => {
           setEnfData,
           setEcfData,
           setEsfData,
+          setInnData,
           setDropsData,
           restoreEquipment,
           setGender,
@@ -149,9 +181,6 @@ const App: React.FC = () => {
           setHairColor,
           setSkinTone
         });
-        setPubDirectory(dataFolder);
-      } else {
-        setPubDirectory(dataFolder); // Mark as ready even if empty
       }
     } catch (error) {
       console.error('Error selecting project:', error);
@@ -205,11 +234,11 @@ const App: React.FC = () => {
 
   // Update window title with asterisk when there are unsaved changes
   React.useEffect(() => {
-    if (isElectron && window.electronAPI && currentProject) {
-      const title = `OakTree - EO Pub Editor - ${currentProject}${hasUnsavedChanges ? ' *' : ''}`;
+    if (isElectron && window.electronAPI && currentProject && projectName) {
+      const title = `OakTree - EO Pub Editor - ${projectName}${hasUnsavedChanges ? ' *' : ''}`;
       window.electronAPI.setTitle(title);
     }
-  }, [hasUnsavedChanges, currentProject]);
+  }, [hasUnsavedChanges, currentProject, projectName]);
 
   const updateNpcDrops = (npcId: number, drops: any[]) => {
     const newDropsData = new Map(dropsData);
@@ -223,7 +252,7 @@ const App: React.FC = () => {
   };
 
   const saveDropsFile = async () => {
-    if (!dataFolder || !isElectron || !window.electronAPI) return;
+    if (!currentProject || !isElectron || !window.electronAPI) return;
     
     try {
       let content = '# NPC Drop Table Configuration\n';
@@ -240,7 +269,7 @@ const App: React.FC = () => {
         content += `${npcId} = ${dropStrs.join(', ')}\n`;
       }
       
-      const dropsPath = `${dataFolder}/drops.txt`;
+      const dropsPath = `${currentProject}/drops.txt`;
       const result = await window.electronAPI.writeTextFile(dropsPath, content);
       
       if (!result.success) {
@@ -257,16 +286,16 @@ const App: React.FC = () => {
   };
 
   const saveAllFiles = async () => {
-    if (!dataFolder || !currentProject || !isElectron || !window.electronAPI) return;
+    if (!currentProject || !isElectron || !window.electronAPI) return;
     
     try {
       await ProjectService.saveProject({
-        dataFolder,
         currentProject,
         eifData,
         enfData,
         ecfData,
         esfData,
+        innData,
         dropsData,
         equippedItems,
         appearance: {
@@ -341,7 +370,6 @@ const App: React.FC = () => {
         onSelectProject={selectProject}
         onCreateProject={createProject}
         onDeleteProject={deleteProject}
-        dataDirectoryPath={dataFolder}
       />
     );
   }
@@ -354,8 +382,14 @@ const App: React.FC = () => {
       enfData={enfData}
       ecfData={ecfData}
       esfData={esfData}
+      innData={innData}
       dropsData={dropsData}
       pubDirectory={pubDirectory}
+      projectName={projectName}
+      currentProject={currentProject}
+      updateProjectSettings={updateProjectSettings}
+      theme={theme}
+      toggleTheme={toggleTheme}
       addItem={addItem}
       deleteItem={deleteItem}
       duplicateItem={duplicateItem}
@@ -372,6 +406,10 @@ const App: React.FC = () => {
       deleteSkill={deleteSkill}
       duplicateSkill={duplicateSkill}
       updateSkill={updateSkill}
+      addInn={addInn}
+      deleteInn={deleteInn}
+      duplicateInn={duplicateInn}
+      updateInn={updateInn}
       updateNpcDrops={updateNpcDrops}
       saveDropsFile={saveDropsFile}
       equippedItems={equippedItems}
@@ -404,11 +442,13 @@ const App: React.FC = () => {
       importDrops={importDrops}
       importClasses={importClasses}
       importSkills={importSkills}
+      importInns={importInns}
       exportItems={exportItems}
       exportNpcs={exportNpcs}
       exportDrops={exportDrops}
       exportClasses={exportClasses}
       exportSkills={exportSkills}
+      exportInns={exportInns}
       loadDirectory={loadDirectory}
     />
   );

@@ -4,3 +4,4 @@
 export { default as CrossedSwordsIcon } from './CrossedSwordsIcon';
 export { default as SkullCrossedBonesIcon } from './SkullCrossedBonesIcon';
 export { default as SpellBookIcon } from './SpellBookIcon';
+export { default as HotelIcon } from './HotelIcon';

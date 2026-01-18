@@ -3,10 +3,12 @@ import ItemList from '../components/items/ItemList';
 import NpcList from '../components/npcs/NpcList';
 import ClassList from '../components/classes/ClassList';
 import SkillList from '../components/skills/SkillList';
+import InnList from '../components/inns/InnList';
 import ItemEditor from '../components/items/ItemEditor';
 import NpcEditor from '../components/npcs/NpcEditor';
 import ClassEditor from '../components/classes/ClassEditor';
 import SkillEditor from '../components/skills/SkillEditor';
+import InnEditor from '../components/inns/InnEditor';
 import SkillPreview from '../components/skills/SkillPreview';
 import DropsEditor from '../components/npcs/DropsEditor';
 import ItemDroppedBy from '../components/items/ItemDroppedBy';
@@ -16,6 +18,7 @@ import PaperdollSlots from '../components/items/PaperdollSlots';
 import AppearanceControls from '../components/items/AppearanceControls';
 import VerticalSidebar from '../components/VerticalSidebar';
 import StatusBar from '../components/StatusBar';
+import ProjectSettings from '../components/ProjectSettings';
 import { useResizablePanel } from '../hooks/useResizablePanel';
 import FaceIcon from '@mui/icons-material/Face';
 import CheckroomIcon from '@mui/icons-material/Checkroom';
@@ -28,10 +31,18 @@ interface EditorPageProps {
   enfData: any;
   ecfData: any;
   esfData: any;
+  innData: any;
   dropsData: Map<number, any[]>;
   pubDirectory: string | null;
-  activeTab: 'items' | 'npcs' | 'classes' | 'skills';
-  setActiveTab: (tab: 'items' | 'npcs' | 'classes' | 'skills') => void;
+  activeTab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns';
+  setActiveTab: (tab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns') => void;
+  
+  // Project settings
+  projectName: string;
+  currentProject: string;
+  updateProjectSettings: (settings: { projectName?: string; gfxPath?: string; pubDirectory?: string }) => Promise<void>;
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
   
   // Items operations
   addItem: () => void;
@@ -56,6 +67,12 @@ interface EditorPageProps {
   deleteSkill: (id: number) => void;
   duplicateSkill: (id: number) => void;
   updateSkill: (id: number, updates: any) => void;
+  
+  // Inn operations
+  addInn: () => void;
+  deleteInn: (index: number) => void;
+  duplicateInn: (index: number) => void;
+  updateInn: (index: number, updates: any) => void;
   
   // Drops operations
   updateNpcDrops: (npcId: number, drops: any[]) => void;
@@ -98,11 +115,13 @@ interface EditorPageProps {
   importDrops: () => Promise<void>;
   importClasses: () => Promise<void>;
   importSkills: () => Promise<void>;
+  importInns: () => Promise<void>;
   exportItems: () => Promise<void>;
   exportNpcs: () => Promise<void>;
   exportDrops: () => Promise<void>;
   exportClasses: () => Promise<void>;
   exportSkills: () => Promise<void>;
+  exportInns: () => Promise<void>;
   
   // Legacy stubs
   loadDirectory: () => void;
@@ -113,6 +132,12 @@ const EditorPage: React.FC<EditorPageProps> = ({
   enfData,
   ecfData,
   esfData,
+  projectName,
+  currentProject,
+  updateProjectSettings,
+  theme,
+  toggleTheme,
+  innData,
   dropsData,
   pubDirectory,
   activeTab,
@@ -133,6 +158,10 @@ const EditorPage: React.FC<EditorPageProps> = ({
   deleteSkill,
   duplicateSkill,
   updateSkill,
+  addInn,
+  deleteInn,
+  duplicateInn,
+  updateInn,
   updateNpcDrops,
   saveDropsFile,
   equippedItems,
@@ -165,11 +194,13 @@ const EditorPage: React.FC<EditorPageProps> = ({
   importDrops,
   importClasses,
   importSkills,
+  importInns,
   exportItems,
   exportNpcs,
   exportDrops,
   exportClasses,
   exportSkills,
+  exportInns,
   loadDirectory
 }) => {
   // UI state - lives in EditorPage since it's editor-specific
@@ -182,6 +213,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
   const [selectedNpcId, setSelectedNpcId] = useState<number | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<number | null>(null);
+  const [selectedInnIndex, setSelectedInnIndex] = useState<number | null>(null);
 
   // Select first NPC when switching to NPCs tab
   useEffect(() => {
@@ -208,6 +240,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
   const selectedNpc = selectedNpcId !== null ? enfData.npcs[selectedNpcId] : null;
   const selectedClass = selectedClassId !== null ? ecfData.classes[selectedClassId] : null;
   const selectedSkill = selectedSkillId !== null ? esfData.skills[selectedSkillId] : null;
+  const selectedInn = selectedInnIndex !== null ? innData.inns[selectedInnIndex] : null;
 
   // Wrapper for equipItem to match PaperdollSlots signature
   const handleEquipItemFromId = useCallback((itemId: number, slotKey: string) => {
@@ -222,25 +255,42 @@ const EditorPage: React.FC<EditorPageProps> = ({
   const handleResetFileSelection = () => {};
   const handleLoadDataFromPath = () => {};
 
+  const handleSaveProjectSettings = async (settings: { projectName: string; gfxPath: string | null; pubDirectory: string | null }) => {
+    try {
+      await updateProjectSettings({
+        projectName: settings.projectName,
+        gfxPath: settings.gfxPath || undefined,
+        pubDirectory: settings.pubDirectory || undefined
+      });
+      setShowSettingsModal(false);
+      alert('Project settings updated successfully!');
+    } catch (error) {
+      console.error('Failed to update project settings:', error);
+      alert(`Failed to update settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   return (
     <div className="app">
       <VerticalSidebar
         activeTab={activeTab}
-        onTabChange={(tab: string) => setActiveTab(tab as 'items' | 'npcs' | 'classes' | 'skills')}
+        onTabChange={(tab: string) => setActiveTab(tab as 'items' | 'npcs' | 'classes' | 'skills' | 'inns')}
         onSave={saveAllFiles}
         onImportItems={importItems}
         onImportNpcs={importNpcs}
         onImportDrops={importDrops}
         onImportClasses={importClasses}
         onImportSkills={importSkills}
+        onImportInns={importInns}
         onExportNpcs={exportNpcs}
         onExportItems={exportItems}
         onExportDrops={exportDrops}
         onExportClasses={exportClasses}
         onExportSkills={exportSkills}
+        onExportInns={exportInns}
         onSettings={() => setShowSettingsModal(true)}
         onReturnToProjects={returnToProjects}
-        isSaveDisabled={!pubDirectory}
+        isSaveDisabled={false}
         leftPanelMinimized={leftPanelMinimized}
         setLeftPanelMinimized={setLeftPanelMinimized}
       />
@@ -339,6 +389,33 @@ const EditorPage: React.FC<EditorPageProps> = ({
               gfxFolder={gfxFolder}
             />
           </div>
+
+          <div style={{ 
+            display: activeTab === 'inns' ? 'flex' : 'none', 
+            flex: 1,
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            <InnList
+              inns={innData.inns}
+              selectedInn={selectedInn}
+              onSelectInn={(inn) => {
+                const index = innData.inns.indexOf(inn);
+                setSelectedInnIndex(index);
+              }}
+              onAddInn={addInn}
+              onDeleteInn={(inn) => {
+                const index = innData.inns.indexOf(inn);
+                deleteInn(index);
+              }}
+              onDuplicateInn={(inn) => {
+                const index = innData.inns.indexOf(inn);
+                duplicateInn(index);
+              }}
+              currentFile={pubDirectory}
+              leftPanelMinimized={leftPanelMinimized}
+            />
+          </div>
         </div>
         
         <div className="center-panel">
@@ -381,9 +458,20 @@ const EditorPage: React.FC<EditorPageProps> = ({
               onDeleteSkill={deleteSkill}
             />
           )}
+
+          {activeTab === 'inns' && selectedInn && (
+            <InnEditor
+              inn={selectedInn}
+              innIndex={selectedInnIndex!}
+              onUpdateInn={updateInn}
+              onDuplicateInn={duplicateInn}
+              onDeleteInn={deleteInn}
+              npcs={enfData.npcs}
+            />
+          )}
         </div>
         
-        {activeTab !== 'classes' && (
+        {activeTab !== 'classes' && activeTab !== 'inns' && (
         <div 
           className={`right-panel ${isResizing ? 'resizing' : ''} ${(isPanelMinimized || (activeTab === 'npcs' && !showPreview && npcTab !== 'drops') || (activeTab === 'items' && appearanceTab === 'droppedBy' && !selectedItem)) ? 'minimized' : ''}`}
           style={{ width: (isPanelMinimized || (activeTab === 'npcs' && !showPreview && npcTab !== 'drops') || (activeTab === 'items' && appearanceTab === 'droppedBy' && !selectedItem)) ? '60px' : `${rightPanelWidth}px` }}
@@ -585,6 +673,18 @@ const EditorPage: React.FC<EditorPageProps> = ({
         progress={loadingProgress}
         message={loadingMessage}
       />
+
+      {showSettingsModal && (
+        <ProjectSettings
+          projectName={projectName}
+          gfxPath={gfxFolder}
+          pubDirectory={pubDirectory}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          onClose={() => setShowSettingsModal(false)}
+          onSave={handleSaveProjectSettings}
+        />
+      )}
     </div>
   );
 };

@@ -196,8 +196,8 @@ const SkillPreview: React.FC<SkillPreviewProps> = ({ skill, loadGfx, gfxFolder }
               ref={canvasRef}
               style={{
                 imageRendering: 'pixelated',
-                border: '1px solid #444',
-                backgroundColor: '#2a2a2a',
+                border: '1px solid var(--border-primary)',
+                backgroundColor: 'var(--bg-input)',
                 maxWidth: '300px',
                 maxHeight: '300px',
                 width: 'auto',
@@ -207,13 +207,9 @@ const SkillPreview: React.FC<SkillPreviewProps> = ({ skill, loadGfx, gfxFolder }
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <button 
                 onClick={() => setIsPlaying(!isPlaying)}
+                className="btn btn-secondary"
                 style={{
-                  padding: '5px 15px',
-                  backgroundColor: '#444',
-                  border: '1px solid #666',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  borderRadius: '3px'
+                  padding: '5px 15px'
                 }}
               >
                 {isPlaying ? 'Pause' : 'Play'}
@@ -227,12 +223,12 @@ const SkillPreview: React.FC<SkillPreviewProps> = ({ skill, loadGfx, gfxFolder }
           <div style={{ 
             width: '64px', 
             height: '64px', 
-            backgroundColor: '#2a2a2a',
-            border: '1px solid #444',
+            backgroundColor: 'var(--bg-input)',
+            border: '1px solid var(--border-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#888'
+            color: 'var(--text-tertiary)'
           }}>
             No Animation
           </div>

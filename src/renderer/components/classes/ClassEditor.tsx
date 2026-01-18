@@ -1,4 +1,5 @@
 import React from 'react';
+import CollapsibleSection from '../CollapsibleSection';
 
 interface Class {
   id: number;
@@ -59,28 +60,18 @@ export default function ClassEditor({
 
       <div className="editor-content">
         {/* Basic Information */}
-        <div className="editor-section">
-          <h3>Basic Information</h3>
-          <div className="form-row">
-            <div className="form-group">
-              <label>ID</label>
-              <input
-                type="number"
-                value={classData.id}
-                disabled
-                className="read-only"
-              />
-            </div>
-            <div className="form-group flex-2">
-              <label>Name</label>
-              <input
-                type="text"
-                value={classData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Class name"
-              />
-            </div>
+        <CollapsibleSection title="Basic Information" defaultExpanded={true}>
+          <div className="form-group">
+            <label>Class Name</label>
+            <input
+              type="text"
+              value={classData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              placeholder="e.g., Warrior, Mage, Archer"
+              className="form-input"
+            />
           </div>
+
           <div className="form-row">
             <div className="form-group">
               <label>Parent Type</label>
@@ -90,6 +81,7 @@ export default function ClassEditor({
                 onChange={(e) => handleNumberInputChange('parentType', e.target.value)}
                 min="0"
                 max="252"
+                className="form-input"
               />
             </div>
             <div className="form-group">
@@ -100,79 +92,89 @@ export default function ClassEditor({
                 onChange={(e) => handleNumberInputChange('statGroup', e.target.value)}
                 min="0"
                 max="252"
+                className="form-input"
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Base Stats */}
-        <div className="editor-section">
-          <h3>Base Stats</h3>
+        <CollapsibleSection title="Starting Stats" defaultExpanded={true}>
+          <div className="form-help" style={{ marginBottom: '12px' }}>
+            Initial stat values for new characters of this class
+          </div>
+
           <div className="form-row">
             <div className="form-group">
-              <label>STR</label>
+              <label>STR (Strength)</label>
               <input
                 type="number"
                 value={classData.str}
                 onChange={(e) => handleNumberInputChange('str', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
-              <label>INT</label>
+              <label>INT (Intelligence)</label>
               <input
                 type="number"
                 value={classData.int}
                 onChange={(e) => handleNumberInputChange('int', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
-              <label>WIS</label>
+              <label>WIS (Wisdom)</label>
               <input
                 type="number"
                 value={classData.wis}
                 onChange={(e) => handleNumberInputChange('wis', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>AGI</label>
+              <label>AGI (Agility)</label>
               <input
                 type="number"
                 value={classData.agi}
                 onChange={(e) => handleNumberInputChange('agi', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
-              <label>CON</label>
+              <label>CON (Constitution)</label>
               <input
                 type="number"
                 value={classData.con}
                 onChange={(e) => handleNumberInputChange('con', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
             <div className="form-group">
-              <label>CHA</label>
+              <label>CHA (Charisma)</label>
               <input
                 type="number"
                 value={classData.cha}
                 onChange={(e) => handleNumberInputChange('cha', e.target.value)}
                 min="0"
                 max="64008"
+                className="form-input"
               />
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
     </div>
   );

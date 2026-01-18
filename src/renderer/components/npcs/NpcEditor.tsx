@@ -1,5 +1,6 @@
 import React from 'react';
 import { NpcType } from 'eolib';
+import CollapsibleSection from '../CollapsibleSection';
 
 // Generate NPC type options from the enum
 const NPC_TYPES = Object.entries(NpcType)
@@ -74,167 +75,180 @@ const NpcEditor: React.FC<NpcEditorProps> = ({ npc, onUpdate, onDuplicateNpc, on
       </div>
 
       <div className="editor-content">
-        <div className="form-grid">
-          {/* Basic Properties */}
+        {/* Basic Information */}
+        <CollapsibleSection title="Basic Information" defaultExpanded={true}>
           <div className="form-group">
-            <label>Name</label>
+            <label>NPC Name</label>
             <input
               type="text"
               value={npc.name || ''}
               onChange={(e) => handleInputChange('name', e.target.value)}
               className="form-input"
+              placeholder="e.g., Goblin, Town Guard, Dragon"
             />
           </div>
 
-          <div className="form-group">
-            <label>Graphic ID</label>
-            <input
-              type="number"
-              value={npc.graphic || 0}
-              onChange={(e) => handleInputChange('graphic', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Race</label>
-            <input
-              type="number"
-              value={npc.race || 0}
-              onChange={(e) => handleInputChange('race', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Type</label>
-            <select
-              value={npc.type || 0}
-              onChange={(e) => handleInputChange('type', parseInt(e.target.value) || 0)}
-              className="form-input"
-            >
-              {NPC_TYPES.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Behavior ID</label>
-            <input
-              type="number"
-              value={npc.behaviorId || 0}
-              onChange={(e) => handleInputChange('behaviorId', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Level</label>
-            <input
-              type="number"
-              value={npc.level || 0}
-              onChange={(e) => handleInputChange('level', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          {/* Boss/Child Flags */}
-          <div className="form-group">
-            <label>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Graphic ID</label>
               <input
-                type="checkbox"
-                checked={npc.boss || false}
-                onChange={(e) => handleInputChange('boss', e.target.checked)}
-                style={{ marginRight: '8px' }}
+                type="number"
+                value={npc.graphic || 0}
+                onChange={(e) => handleInputChange('graphic', parseInt(e.target.value) || 0)}
+                className="form-input"
               />
-              Boss NPC
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>
+            </div>
+            <div className="form-group">
+              <label>Level</label>
               <input
-                type="checkbox"
-                checked={npc.child || false}
-                onChange={(e) => handleInputChange('child', e.target.checked)}
-                style={{ marginRight: '8px' }}
+                type="number"
+                value={npc.level || 0}
+                onChange={(e) => handleInputChange('level', parseInt(e.target.value) || 0)}
+                className="form-input"
               />
-              Child/Minion NPC
-            </label>
+            </div>
+            <div className="form-group">
+              <label>Experience</label>
+              <input
+                type="number"
+                value={npc.exp || 0}
+                onChange={(e) => handleInputChange('exp', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
-          {/* Stats */}
-          <div className="form-group">
-            <label>HP</label>
-            <input
-              type="number"
-              value={npc.hp || 0}
-              onChange={(e) => handleInputChange('hp', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Race</label>
+              <input
+                type="number"
+                value={npc.race || 0}
+                onChange={(e) => handleInputChange('race', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Type</label>
+              <select
+                value={npc.type || 0}
+                onChange={(e) => handleInputChange('type', parseInt(e.target.value) || 0)}
+                className="form-input"
+              >
+                {NPC_TYPES.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Behavior ID</label>
+              <input
+                type="number"
+                value={npc.behaviorId || 0}
+                onChange={(e) => handleInputChange('behaviorId', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>TP (Mana)</label>
-            <input
-              type="number"
-              value={npc.tp || 0}
-              onChange={(e) => handleInputChange('tp', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={npc.boss || false}
+                  onChange={(e) => handleInputChange('boss', e.target.checked)}
+                />
+                <span>Boss NPC</span>
+              </label>
+            </div>
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={npc.child || false}
+                  onChange={(e) => handleInputChange('child', e.target.checked)}
+                />
+                <span>Child/Minion NPC</span>
+              </label>
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        {/* Combat Stats */}
+        <CollapsibleSection title="Combat Stats" defaultExpanded={true}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>HP (Health Points)</label>
+              <input
+                type="number"
+                value={npc.hp || 0}
+                onChange={(e) => handleInputChange('hp', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>TP (Mana/Magic)</label>
+              <input
+                type="number"
+                value={npc.tp || 0}
+                onChange={(e) => handleInputChange('tp', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Min Damage</label>
-            <input
-              type="number"
-              value={npc.minDamage || 0}
-              onChange={(e) => handleInputChange('minDamage', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Min Damage</label>
+              <input
+                type="number"
+                value={npc.minDamage || 0}
+                onChange={(e) => handleInputChange('minDamage', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Max Damage</label>
+              <input
+                type="number"
+                value={npc.maxDamage || 0}
+                onChange={(e) => handleInputChange('maxDamage', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Max Damage</label>
-            <input
-              type="number"
-              value={npc.maxDamage || 0}
-              onChange={(e) => handleInputChange('maxDamage', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Accuracy</label>
-            <input
-              type="number"
-              value={npc.accuracy || 0}
-              onChange={(e) => handleInputChange('accuracy', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Evade</label>
-            <input
-              type="number"
-              value={npc.evade || 0}
-              onChange={(e) => handleInputChange('evade', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Armor</label>
-            <input
-              type="number"
-              value={npc.armor || 0}
-              onChange={(e) => handleInputChange('armor', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Accuracy</label>
+              <input
+                type="number"
+                value={npc.accuracy || 0}
+                onChange={(e) => handleInputChange('accuracy', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Evade</label>
+              <input
+                type="number"
+                value={npc.evade || 0}
+                onChange={(e) => handleInputChange('evade', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Armor</label>
+              <input
+                type="number"
+                value={npc.armor || 0}
+                onChange={(e) => handleInputChange('armor', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
           <div className="form-group">
@@ -245,59 +259,56 @@ const NpcEditor: React.FC<NpcEditorProps> = ({ npc, onUpdate, onDuplicateNpc, on
               onChange={(e) => handleInputChange('returnDamage', parseInt(e.target.value) || 0)}
               className="form-input"
             />
+            <div className="form-help">
+              Damage reflected back to attackers
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        {/* Elemental Properties */}
+        <CollapsibleSection title="Elemental Properties" defaultExpanded={false}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Element Type</label>
+              <input
+                type="number"
+                value={npc.element || 0}
+                onChange={(e) => handleInputChange('element', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Element Damage</label>
+              <input
+                type="number"
+                value={npc.elementDamage || 0}
+                onChange={(e) => handleInputChange('elementDamage', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
 
-          {/* Elemental Properties */}
-          <div className="form-group">
-            <label>Element</label>
-            <input
-              type="number"
-              value={npc.element || 0}
-              onChange={(e) => handleInputChange('element', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Weakness Type</label>
+              <input
+                type="number"
+                value={npc.elementWeakness || 0}
+                onChange={(e) => handleInputChange('elementWeakness', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>Weakness Damage Multiplier</label>
+              <input
+                type="number"
+                value={npc.elementWeaknessDamage || 0}
+                onChange={(e) => handleInputChange('elementWeaknessDamage', parseInt(e.target.value) || 0)}
+                className="form-input"
+              />
+            </div>
           </div>
-
-          <div className="form-group">
-            <label>Element Damage</label>
-            <input
-              type="number"
-              value={npc.elementDamage || 0}
-              onChange={(e) => handleInputChange('elementDamage', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Element Weakness</label>
-            <input
-              type="number"
-              value={npc.elementWeakness || 0}
-              onChange={(e) => handleInputChange('elementWeakness', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Weakness Damage</label>
-            <input
-              type="number"
-              value={npc.elementWeaknessDamage || 0}
-              onChange={(e) => handleInputChange('elementWeaknessDamage', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Experience</label>
-            <input
-              type="number"
-              value={npc.exp || 0}
-              onChange={(e) => handleInputChange('exp', parseInt(e.target.value) || 0)}
-              className="form-input"
-            />
-          </div>
-        </div>
+        </CollapsibleSection>
       </div>
     </div>
   );

@@ -30,34 +30,39 @@ interface ProjectData {
 }
 
 interface UseProjectReturn {
-  currentProject: string;
-  dataFolder: string;
+  currentProject: string; // Full path to project directory
+  projectName: string; // Just the project name
   gfxFolder: string;
+  pubDirectory: string | null;
   createProject: (projectName: string, gfxPath: string, eifPath?: string, enfPath?: string, ecfPath?: string, esfPath?: string, dropsPath?: string) => Promise<void>;
   selectProject: (projectName: string) => Promise<ProjectData | null>;
   deleteProject: (projectName: string) => Promise<void>;
+  updateProjectSettings: (settings: { projectName?: string; gfxPath?: string; pubDirectory?: string }) => Promise<void>;
   setCurrentProject: (projectName: string) => void;
   setGfxFolder: (path: string) => void;
+  setPubDirectory: (path: string | null) => void;
 }
 
 export const useProject = (): UseProjectReturn => {
-  const [currentProject, setCurrentProject] = useState('');
-  const [dataFolder, setDataFolder] = useState('');
+  const [currentProject, setCurrentProject] = useState(''); // Full path
+  const [projectName, setProjectName] = useState(''); // Just the name
   const [gfxFolder, setGfxFolder] = useState('');
+  const [pubDirectory, setPubDirectory] = useState<string | null>(null);
+  const [oaktreeDir, setOaktreeDir] = useState(''); // Internal: .oaktree directory
 
   const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
-  // Initialize data folder on mount
+  // Initialize .oaktree directory on mount
   useEffect(() => {
-    const initializeDataFolder = async () => {
+    const initializeOaktreeDir = async () => {
       if (isElectron && window.electronAPI) {
         const cwd = await window.electronAPI.getCwd();
         const folder = `${cwd}/.oaktree`;
-        setDataFolder(folder);
+        setOaktreeDir(folder);
         await window.electronAPI.ensureDir(folder);
       }
     };
-    initializeDataFolder();
+    initializeOaktreeDir();
   }, []);
 
   const createProject = useCallback(async (
@@ -69,8 +74,8 @@ export const useProject = (): UseProjectReturn => {
     esfPath?: string,
     dropsPath?: string
   ) => {
-    if (!dataFolder || !isElectron || !window.electronAPI) {
-      throw new Error('Data folder not available');
+    if (!oaktreeDir || !isElectron || !window.electronAPI) {
+      throw new Error('.oaktree directory not available');
     }
 
     // Validate project name
@@ -79,7 +84,7 @@ export const useProject = (): UseProjectReturn => {
       throw new Error('Project name contains invalid characters. Please use only letters, numbers, spaces, hyphens, and underscores.');
     }
 
-    const projectFolder = `${dataFolder}/${projectName}`;
+    const projectFolder = `${oaktreeDir}/${projectName}`;
     console.log('Creating project folder:', projectFolder);
     await window.electronAPI.ensureDir(projectFolder);
 
@@ -270,17 +275,18 @@ export const useProject = (): UseProjectReturn => {
     }
 
     // Update state
-    setCurrentProject(projectName);
+    setCurrentProject(projectFolder);
+    setProjectName(projectName);
     setGfxFolder(gfxPath);
-  }, [dataFolder]);
+  }, [oaktreeDir]);
 
   const selectProject = useCallback(async (projectName: string): Promise<ProjectData | null> => {
-    if (!dataFolder || !isElectron || !window.electronAPI) return null;
+    if (!oaktreeDir || !isElectron || !window.electronAPI) return null;
 
     try {
-      console.log(`Selecting project: "${projectName}" in folder: ${dataFolder}`);
+      console.log(`Selecting project: "${projectName}" in folder: ${oaktreeDir}`);
       
-      const projectFolder = `${dataFolder}/${projectName}`;
+      const projectFolder = `${oaktreeDir}/${projectName}`;
       const projectData: ProjectData = {};
       let jsonFilesFound = false;
       
@@ -365,6 +371,24 @@ export const useProject = (): UseProjectReturn => {
         console.log('skills.json not found, initialized as empty');
       }
       
+      // Load inns.json
+      const innsPath = `${projectFolder}/inns.json`;
+      result = await window.electronAPI.readTextFile(innsPath);
+      if (result.success) {
+        const innsData = JSON.parse(result.data);
+        if (Array.isArray(innsData)) {
+          projectData.inns = innsData;
+          console.log('inns.json loaded successfully');
+        } else {
+          projectData.inns = [];
+          console.log('inns.json is not an array, initialized as empty');
+        }
+        jsonFilesFound = true;
+      } else {
+        projectData.inns = [];
+        console.log('inns.json not found, initialized as empty');
+      }
+      
       // Load drops.json
       const dropsPath = `${projectFolder}/drops.json`;
       result = await window.electronAPI.readTextFile(dropsPath);
@@ -405,7 +429,8 @@ export const useProject = (): UseProjectReturn => {
       }
       
       // Update state
-      setCurrentProject(projectName);
+      setCurrentProject(projectFolder);
+      setProjectName(projectName);
       localStorage.setItem('currentProject', projectName);
       
       // Update window title
@@ -424,18 +449,79 @@ export const useProject = (): UseProjectReturn => {
       console.error('Error selecting project:', error);
       throw error;
     }
-  }, [dataFolder]);
+  }, [oaktreeDir]);
+
+  const updateProjectSettings = useCallback(async (settings: { projectName?: string; gfxPath?: string; pubDirectory?: string }) => {
+    if (!currentProject || !isElectron || !window.electronAPI) {
+      throw new Error('No active project');
+    }
+
+    const configPath = `${currentProject}/config.json`;
+    const configResult = await window.electronAPI.readTextFile(configPath);
+    
+    if (!configResult.success) {
+      throw new Error(`Failed to read config: ${configResult.error}`);
+    }
+
+    const config = JSON.parse(configResult.data);
+    
+    // Handle project rename
+    if (settings.projectName && settings.projectName !== config.name) {
+      const oldProjectPath = currentProject;
+      const newProjectPath = `${oaktreeDir}/${settings.projectName}`;
+      
+      // Check if new project name already exists
+      const exists = await window.electronAPI.pathExists(newProjectPath);
+      if (exists) {
+        throw new Error(`A project named "${settings.projectName}" already exists`);
+      }
+      
+      // Rename the project directory
+      await window.electronAPI.renameFile(oldProjectPath, newProjectPath);
+      
+      // Update state
+      setCurrentProject(newProjectPath);
+      setProjectName(settings.projectName);
+      config.name = settings.projectName;
+    }
+    
+    // Update GFX path
+    if (settings.gfxPath !== undefined) {
+      config.gfxPath = settings.gfxPath;
+      setGfxFolder(settings.gfxPath);
+    }
+    
+    // Update pub directory
+    if (settings.pubDirectory !== undefined) {
+      config.pubDirectory = settings.pubDirectory;
+      setPubDirectory(settings.pubDirectory);
+    }
+    
+    // Update last modified time
+    config.lastModified = new Date().toISOString();
+    
+    // Write updated config
+    const writeResult = await window.electronAPI.writeTextFile(
+      `${currentProject}/config.json`,
+      JSON.stringify(config, null, 2)
+    );
+    
+    if (!writeResult.success) {
+      throw new Error(`Failed to save config: ${writeResult.error}`);
+    }
+  }, [currentProject, oaktreeDir]);
 
   const deleteProject = useCallback(async (projectName: string) => {
-    if (!dataFolder || !isElectron || !window.electronAPI) return;
+    if (!oaktreeDir || !isElectron || !window.electronAPI) return;
 
     try {
-      const projectFolder = `${dataFolder}/${projectName}`;
+      const projectFolder = `${oaktreeDir}/${projectName}`;
       await window.electronAPI.deleteDirectory(projectFolder);
       
       // If deleting the currently open project, clear state
-      if (projectName === currentProject) {
+      if (projectFolder === currentProject) {
         setCurrentProject('');
+        setProjectName('');
         setGfxFolder('');
         localStorage.removeItem('currentProject');
         
@@ -450,16 +536,19 @@ export const useProject = (): UseProjectReturn => {
       console.error('Error deleting project:', error);
       throw error;
     }
-  }, [dataFolder, currentProject]);
+  }, [oaktreeDir, currentProject]);
 
   return {
     currentProject,
-    dataFolder,
+    projectName,
     gfxFolder,
+    pubDirectory,
     createProject,
     selectProject,
     deleteProject,
+    updateProjectSettings,
     setCurrentProject,
-    setGfxFolder
+    setGfxFolder,
+    setPubDirectory
   };
 };

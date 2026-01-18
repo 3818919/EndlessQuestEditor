@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFile: (filters) => ipcRenderer.invoke('dialog:openFile', filters),
   openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
   saveFile: (defaultPath, filters) => ipcRenderer.invoke('dialog:saveFile', defaultPath, filters),
+  selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   
   // File operations
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
@@ -25,9 +26,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCwd: () => ipcRenderer.invoke('path:getCwd'),
   setTitle: (title: string) => ipcRenderer.invoke('window:setTitle', title),
   fileExists: (filePath) => ipcRenderer.invoke('file:exists', filePath),
+  pathExists: (path) => ipcRenderer.invoke('file:pathExists', path),
   isDirectory: (filePath) => ipcRenderer.invoke('file:isDirectory', filePath),
   ensureDir: (dirPath) => ipcRenderer.invoke('file:ensureDir', dirPath),
   listDirectories: (dirPath) => ipcRenderer.invoke('file:listDirectories', dirPath),
   deleteDirectory: (dirPath) => ipcRenderer.invoke('file:deleteDirectory', dirPath),
+  renameFile: (oldPath, newPath) => ipcRenderer.invoke('file:rename', oldPath, newPath),
   convertBitmapToPNG: (bitmapData) => ipcRenderer.invoke('file:convertBitmapToPNG', bitmapData)
 });

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { ItemType } from 'eolib';
 import ItemPreview from './ItemPreview';
 import ListFilter from '../ListFilter';
 import GenericList, { ListItem } from '../GenericList';
@@ -9,33 +10,16 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
-const ITEM_TYPES = {
-  0: 'Static',
-  1: 'UnknownType1',
-  2: 'Money',
-  3: 'Heal',
-  4: 'Teleport',
-  5: 'Spell',
-  6: 'EXPReward',
-  7: 'StatReward',
-  8: 'SkillReward',
-  9: 'Key',
-  10: 'Weapon',
-  11: 'Shield',
-  12: 'Armor',
-  13: 'Hat',
-  14: 'Boots',
-  15: 'Gloves',
-  16: 'Accessory',
-  17: 'Belt',
-  18: 'Necklace',
-  19: 'Ring',
-  20: 'Armlet',
-  21: 'Bracer',
-  22: 'Beer',
-  23: 'EffectPotion',
-  24: 'HairDye',
-  25: 'CureCurse'
+// Helper to get ItemType name from enum value
+const getItemTypeName = (type: number): string => {
+  return ItemType[type] || 'Unknown';
+};
+
+// Helper to get all item type options for filter dropdown
+const getItemTypeOptions = () => {
+  return Object.entries(ItemType)
+    .filter(([key]) => isNaN(Number(key))) // Filter out reverse mappings
+    .map(([key, value]) => ({ value: value as number, label: key }));
 };
 
 export default function ItemList({
@@ -242,8 +226,8 @@ export default function ItemList({
           mode="icon"
         />
       ),
-      secondaryText: ITEM_TYPES[item.type] || 'Unknown',
-      hoverText: leftPanelMinimized ? `${item.name} (#${item.id})` : ITEM_TYPES[item.type] || 'Unknown',
+      secondaryText: getItemTypeName(item.type),
+      hoverText: leftPanelMinimized ? `${item.name} (#${item.id})` : getItemTypeName(item.type),
       data: item
     }));
   }, [filteredItems, gfxFolder, loadGfx, leftPanelMinimized]);
@@ -277,7 +261,7 @@ export default function ItemList({
           className="type-filter"
         >
           <option value="all">All Types</option>
-          {Object.entries(ITEM_TYPES).map(([value, label]) => (
+          {getItemTypeOptions().map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
@@ -297,7 +281,7 @@ export default function ItemList({
             className="type-filter"
           >
             <option value="all">All Types</option>
-            {Object.entries(ITEM_TYPES).map(([value, label]) => (
+            {getItemTypeOptions().map(({ value, label }) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>

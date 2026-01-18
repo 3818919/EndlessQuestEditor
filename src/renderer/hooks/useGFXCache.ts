@@ -278,6 +278,12 @@ export function useGFXCache(gfxFolder) {
     // Legacy BMPs cause significant browser blocking when decoded concurrently
     for (const { gfxNumber, resourceId } of requests) {
       try {
+        // Skip if already cached (avoid unnecessary logging)
+        const cacheKey = `${gfxNumber}_${resourceId}`;
+        if (bitmapCache.current[cacheKey]) {
+          continue; // Already cached, skip
+        }
+        
         await loadGfx(gfxNumber, resourceId);
       } catch (err) {
         console.debug(`Background preload failed for GFX ${gfxNumber}/${resourceId}:`, err);

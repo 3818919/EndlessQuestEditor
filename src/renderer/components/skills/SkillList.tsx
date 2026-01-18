@@ -105,9 +105,8 @@ export default function SkillList({
           backgroundPosition: '0 0',
           backgroundRepeat: 'no-repeat',
           imageRendering: 'pixelated',
-          border: '1px solid #444',
-          borderRadius: '4px',
-          backgroundColor: '#2a2a2a'
+          border: '1px solid var(--border-primary)',
+          borderRadius: '4px'
         }}
         title={`Skill ${skill.id} icon`}
       />
@@ -118,8 +117,8 @@ export default function SkillList({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#2a2a2a',
-        border: '1px solid #444',
+        backgroundColor: 'var(--bg-input)',
+        border: '1px solid var(--border-primary)',
         borderRadius: '4px',
         fontSize: '14px',
         fontWeight: 'bold',

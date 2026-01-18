@@ -18,16 +18,15 @@ interface LandingScreenProps {
   onSelectProject: (projectName: string) => void;
   onCreateProject: (projectName: string, gfxPath: string, eifPath?: string, enfPath?: string, ecfPath?: string, esfPath?: string, dropsPath?: string) => void;
   onDeleteProject?: (projectName: string) => void;
-  dataDirectoryPath: string | null;
 }
 
 const LandingScreen: React.FC<LandingScreenProps> = ({
   onSelectProject,
   onCreateProject,
-  onDeleteProject,
-  dataDirectoryPath
+  onDeleteProject
 }) => {
   const [projects, setProjects] = useState<Array<{ name: string; config: ProjectConfig }>>([]);
+  const [oaktreePath, setOaktreePath] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectGfxPath, setNewProjectGfxPath] = useState('');
@@ -37,18 +36,28 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
   const [newProjectEsfPath, setNewProjectEsfPath] = useState('');
   const [newProjectDropsPath, setNewProjectDropsPath] = useState('');
 
-  // Load projects when component mounts
+  // Initialize .oaktree directory path
   useEffect(() => {
-    if (dataDirectoryPath && isElectron && window.electronAPI) {
+    const initOaktreePath = async () => {
+      if (isElectron && window.electronAPI) {
+        const cwd = await window.electronAPI.getCwd();
+        setOaktreePath(`${cwd}/.oaktree`);
+      }
+    };
+    initOaktreePath();
+  }, []);
+
+  // Load projects when oaktreePath is available
+  useEffect(() => {
+    if (oaktreePath && isElectron && window.electronAPI) {
       loadProjects();
     }
-  }, [dataDirectoryPath]);
+  }, [oaktreePath]);
 
   const loadProjects = async () => {
-    if (!window.electronAPI || !dataDirectoryPath) return;
+    if (!window.electronAPI || !oaktreePath) return;
 
     try {
-      const oaktreePath = dataDirectoryPath;
       const exists = await window.electronAPI.fileExists(oaktreePath);
       
       if (!exists) {
@@ -176,13 +185,13 @@ const LandingScreen: React.FC<LandingScreenProps> = ({
   const handleDeleteProject = async (projectName: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent project selection when clicking delete
     
-    if (!window.electronAPI || !dataDirectoryPath) return;
+    if (!window.electronAPI || !oaktreePath) return;
     
     const confirmed = confirm(`Are you sure you want to delete project "${projectName}"?\n\nThis will delete all project files and cannot be undone.`);
     if (!confirmed) return;
     
     try {
-      const projectPath = `${dataDirectoryPath}/${projectName}`;
+      const projectPath = `${oaktreePath}/${projectName}`;
       await window.electronAPI.deleteDirectory(projectPath);
       
       if (onDeleteProject) {

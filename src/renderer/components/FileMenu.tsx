@@ -8,11 +8,13 @@ interface FileMenuProps {
   onImportDrops: () => void;
   onImportClasses: () => void;
   onImportSkills: () => void;
+  onImportInns: () => void;
   onExportNpcs: () => void;
   onExportItems: () => void;
   onExportDrops: () => void;
   onExportClasses: () => void;
   onExportSkills: () => void;
+  onExportInns: () => void;
   disabled?: boolean;
 }
 
@@ -23,11 +25,13 @@ const FileMenu: React.FC<FileMenuProps> = ({
   onImportDrops,
   onImportClasses,
   onImportSkills,
+  onImportInns,
   onExportNpcs, 
   onExportItems, 
   onExportDrops,
   onExportClasses,
-  onExportSkills, 
+  onExportSkills,
+  onExportInns, 
   disabled 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -82,6 +86,15 @@ const FileMenu: React.FC<FileMenuProps> = ({
     onExportSkills();
   };
 
+  const handleExportInns = () => {
+    setIsOpen(false);
+    onExportInns();
+  };
+
+  const handleImportInns = () => {
+    setIsOpen(false);
+    onImportInns();
+  };
   const handleSave = () => {
     setIsOpen(false);
     onSave();
@@ -121,6 +134,9 @@ const FileMenu: React.FC<FileMenuProps> = ({
               <button className="file-menu-item" onClick={handleImportSkills}>
                 <span>Skills (.esf)</span>
               </button>
+              <button className="file-menu-item" onClick={handleImportInns}>
+                <span>Inns (.txt)</span>
+              </button>
               <button className="file-menu-item" onClick={handleImportDrops}>
                 <span>Drops (.txt)</span>
               </button>
@@ -138,6 +154,9 @@ const FileMenu: React.FC<FileMenuProps> = ({
               </button>
               <button className="file-menu-item" onClick={handleExportSkills}>
                 <span>Skills (.esf)</span>
+              </button>
+              <button className="file-menu-item" onClick={handleExportInns}>
+                <span>Inns (.txt)</span>
               </button>
               <button className="file-menu-item" onClick={handleExportDrops}>
                 <span>Drops (.txt)</span>

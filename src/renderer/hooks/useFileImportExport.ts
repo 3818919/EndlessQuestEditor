@@ -3,6 +3,7 @@ import { EIFParser } from '../../eif-parser';
 import { ENFParser } from '../../enf-parser';
 import { ECFParser } from '../../ecf-parser';
 import { ESFParser } from '../../esf-parser';
+import { parseInnFile, serializeInnFile, exportInnsToText, importInnsFromText } from '../../inn-parser';
 import { recordToArray } from '../../utils/dataTransforms';
 
 interface UseFileImportExportProps {
@@ -10,13 +11,14 @@ interface UseFileImportExportProps {
   enfData: { version: number; npcs: Record<number, any> };
   ecfData: { version: number; classes: Record<number, any> };
   esfData: { version: number; skills: Record<number, any> };
+  innData: { version: number; inns: any[] };
   dropsData: Map<number, any[]>;
-  dataFolder: string;
   currentProject: string;
   setEifData: (data: any) => void;
   setEnfData: (data: any) => void;
   setEcfData: (data: any) => void;
   setEsfData: (data: any) => void;
+  setInnData: (data: any) => void;
   setDropsData: (data: Map<number, any[]>) => void;
 }
 
@@ -25,13 +27,14 @@ export const useFileImportExport = ({
   enfData,
   ecfData,
   esfData,
+  innData,
   dropsData,
-  dataFolder,
   currentProject,
   setEifData,
   setEnfData,
   setEcfData,
   setEsfData,
+  setInnData,
   setDropsData
 }: UseFileImportExportProps) => {
   const isElectron = typeof window !== 'undefined' && window.electronAPI;
@@ -144,10 +147,9 @@ export const useFileImportExport = ({
         setEifData({ version: 1, items });
         
         // Save to project JSON
-        if (dataFolder && currentProject) {
-          const projectFolder = `${dataFolder}/${currentProject}`;
+        if (currentProject) {
           const itemsArray = recordToArray(items);
-          const itemsPath = `${projectFolder}/items.json`;
+          const itemsPath = `${currentProject}/items.json`;
           await window.electronAPI.writeTextFile(itemsPath, JSON.stringify(itemsArray, null, 2));
         }
         
@@ -157,7 +159,7 @@ export const useFileImportExport = ({
       console.error('Error importing items:', error);
       alert('Error importing items: ' + (error as Error).message);
     }
-  }, [dataFolder, currentProject, setEifData]);
+  }, [currentProject, setEifData]);
 
   const importNpcs = useCallback(async () => {
     if (!isElectron || !window.electronAPI) return;
@@ -182,10 +184,9 @@ export const useFileImportExport = ({
         setEnfData({ version: 1, npcs });
         
         // Save to project JSON
-        if (dataFolder && currentProject) {
-          const projectFolder = `${dataFolder}/${currentProject}`;
+        if (currentProject) {
           const npcsArray = recordToArray(npcs);
-          const npcsPath = `${projectFolder}/npcs.json`;
+          const npcsPath = `${currentProject}/npcs.json`;
           await window.electronAPI.writeTextFile(npcsPath, JSON.stringify(npcsArray, null, 2));
         }
         
@@ -195,7 +196,7 @@ export const useFileImportExport = ({
       console.error('Error importing NPCs:', error);
       alert('Error importing NPCs: ' + (error as Error).message);
     }
-  }, [dataFolder, currentProject, setEnfData]);
+  }, [currentProject, setEnfData]);
 
   const importDrops = useCallback(async () => {
     if (!isElectron || !window.electronAPI) return;
@@ -246,10 +247,9 @@ export const useFileImportExport = ({
         setDropsData(dropsMap);
         
         // Save to project JSON
-        if (dataFolder && currentProject) {
-          const projectFolder = `${dataFolder}/${currentProject}`;
+        if (currentProject) {
           const dropsArray = Array.from(dropsMap.entries()).map(([npcId, drops]) => ({ npcId, drops }));
-          const dropsPath = `${projectFolder}/drops.json`;
+          const dropsPath = `${currentProject}/drops.json`;
           await window.electronAPI.writeTextFile(dropsPath, JSON.stringify(dropsArray, null, 2));
         }
         
@@ -259,7 +259,7 @@ export const useFileImportExport = ({
       console.error('Error importing drops:', error);
       alert('Error importing drops: ' + (error as Error).message);
     }
-  }, [dataFolder, currentProject, setDropsData]);
+  }, [currentProject, setDropsData]);
 
   const exportClasses = useCallback(async () => {
     if (!isElectron || !window.electronAPI) return;
@@ -308,10 +308,9 @@ export const useFileImportExport = ({
         setEcfData({ version: 1, classes });
         
         // Save to project JSON
-        if (dataFolder && currentProject) {
-          const projectFolder = `${dataFolder}/${currentProject}`;
+        if (currentProject) {
           const classesArray = recordToArray(classes);
-          const classesPath = `${projectFolder}/classes.json`;
+          const classesPath = `${currentProject}/classes.json`;
           await window.electronAPI.writeTextFile(classesPath, JSON.stringify(classesArray, null, 2));
         }
         
@@ -321,7 +320,7 @@ export const useFileImportExport = ({
       console.error('Error importing classes:', error);
       alert('Error importing classes: ' + (error as Error).message);
     }
-  }, [dataFolder, currentProject, setEcfData]);
+  }, [currentProject, setEcfData]);
 
   const exportSkills = useCallback(async () => {
     if (!isElectron || !window.electronAPI) return;
@@ -370,10 +369,9 @@ export const useFileImportExport = ({
         setEsfData({ version: 1, skills });
         
         // Save to project JSON
-        if (dataFolder && currentProject) {
-          const projectFolder = `${dataFolder}/${currentProject}`;
+        if (currentProject) {
           const skillsArray = recordToArray(skills);
-          const skillsPath = `${projectFolder}/skills.json`;
+          const skillsPath = `${currentProject}/skills.json`;
           await window.electronAPI.writeTextFile(skillsPath, JSON.stringify(skillsArray, null, 2));
         }
         
@@ -383,7 +381,69 @@ export const useFileImportExport = ({
       console.error('Error importing skills:', error);
       alert('Error importing skills: ' + (error as Error).message);
     }
-  }, [dataFolder, currentProject, setEsfData]);
+  }, [currentProject, setEsfData]);
+
+  const exportInns = useCallback(async () => {
+    if (!isElectron || !window.electronAPI) return;
+    
+    try {
+      const result = await window.electronAPI.saveFile('inns.txt', [
+        { name: 'Text Files', extensions: ['txt'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]);
+      
+      if (!result) return;
+      
+      // Convert inn data to InnFile structure
+      const innFile = { inns: innData.inns };
+      const textData = exportInnsToText(innFile as any);
+      const writeResult = await window.electronAPI.writeFile(result, Buffer.from(textData, 'utf-8'));
+      
+      if (writeResult) {
+        alert('Inns exported successfully!');
+      }
+    } catch (error) {
+      console.error('Error exporting inns:', error);
+      alert('Error exporting inns: ' + (error as Error).message);
+    }
+  }, [innData]);
+
+  const importInns = useCallback(async () => {
+    if (!isElectron || !window.electronAPI) return;
+    
+    try {
+      const result = await window.electronAPI.openFile([
+        { name: 'Text Files', extensions: ['txt'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]);
+      
+      if (!result) return;
+      
+      const fileData = await window.electronAPI.readTextFile(result);
+      if (fileData.success) {
+        const textData = fileData.data;
+        const innFile = importInnsFromText(textData);
+        
+        setInnData({
+          version: 1,
+          inns: innFile.inns
+        });
+        
+        // Save to project JSON
+        if (currentProject) {
+          const innsPath = `${currentProject}/inns.json`;
+          await window.electronAPI.writeTextFile(innsPath, JSON.stringify(innFile.inns, null, 2));
+        }
+        
+        alert(`Inns imported successfully! ${innFile.inns.length} inns loaded.`);
+      } else {
+        throw new Error(fileData.error);
+      }
+    } catch (error) {
+      console.error('Error importing inns:', error);
+      alert('Error importing inns: ' + (error as Error).message);
+    }
+  }, [currentProject, setInnData]);
 
   return {
     exportItems,
@@ -391,10 +451,12 @@ export const useFileImportExport = ({
     exportDrops,
     exportClasses,
     exportSkills,
+    exportInns,
     importItems,
     importNpcs,
     importDrops,
     importClasses,
-    importSkills
+    importSkills,
+    importInns
   };
 };

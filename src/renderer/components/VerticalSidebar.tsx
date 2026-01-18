@@ -2,6 +2,7 @@ import React from 'react';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HomeIcon from '@mui/icons-material/Home';
+import HouseIcon from '@mui/icons-material/House';
 import FileMenu from './FileMenu';
 import { CrossedSwordsIcon, SkullCrossedBonesIcon, SpellBookIcon } from './icons';
 
@@ -14,11 +15,13 @@ interface VerticalSidebarProps {
   onImportDrops: () => void;
   onImportClasses: () => void;
   onImportSkills: () => void;
+  onImportInns: () => void;
   onExportNpcs: () => void;
   onExportItems: () => void;
   onExportDrops: () => void;
   onExportClasses: () => void;
   onExportSkills: () => void;
+  onExportInns: () => void;
   onSettings: () => void;
   onReturnToProjects: () => void;
   isSaveDisabled: boolean;
@@ -35,11 +38,13 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   onImportDrops,
   onImportClasses,
   onImportSkills,
+  onImportInns,
   onExportNpcs,
   onExportItems,
   onExportDrops,
   onExportClasses,
   onExportSkills,
+  onExportInns,
   onSettings,
   onReturnToProjects,
   isSaveDisabled,
@@ -69,11 +74,13 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         onImportDrops={onImportDrops}
         onImportClasses={onImportClasses}
         onImportSkills={onImportSkills}
+        onImportInns={onImportInns}
         onExportNpcs={onExportNpcs}
         onExportItems={onExportItems}
         onExportDrops={onExportDrops}
         onExportClasses={onExportClasses}
         onExportSkills={onExportSkills}
+        onExportInns={onExportInns}
         disabled={isSaveDisabled}
       />
       <button
@@ -103,6 +110,13 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         title="Skills / Spells"
       >
         <SpellBookIcon />
+      </button>
+      <button
+        className={`left-sidebar-button ${activeTab === 'inns' && !leftPanelMinimized ? 'active' : ''}`}
+        onClick={() => handleTabClick('inns')}
+        title="Inns / Spawn Points"
+      >
+        <HouseIcon />
       </button>
       <div className="sidebar-spacer"></div>
       <button
