@@ -1,5 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { GFX_FILES } from '../../animation/constants';
+import { GFX_FILES } from '../../../animation/constants';
+
+interface HairstyleSelectorProps {
+  gender: number;
+  hairColor: number;
+  hairStyle: number;
+  setHairStyle: (style: number) => void;
+  gfxFolder: string;
+  loadGfx: (gfxNumber: number, resourceId?: number) => Promise<string | null>;
+}
 
 export default function HairstyleSelector({
   gender,
@@ -8,8 +17,8 @@ export default function HairstyleSelector({
   setHairStyle,
   gfxFolder,
   loadGfx
-}) {
-  const [hairstyles, setHairstyles] = useState([]);
+}: HairstyleSelectorProps) {
+  const [hairstyles, setHairstyles] = useState<Array<{style: number, dataUrl: string}>>([]);
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
 
@@ -31,42 +40,41 @@ export default function HairstyleSelector({
         // Determine which GFX file to use based on gender
         const hairGfxFile = gender === 0 ? GFX_FILES.FEMALE_HAIR : GFX_FILES.MALE_HAIR;
         
-        // Load hairstyles in parallel for better performance
-        const loadPromises = [];
+        // Load hairstyles ONE AT A TIME to avoid blocking the browser
+        // Even loading 2-3 at once causes exponential slowdown with these legacy BMPs
         const MAX_STYLES = 30;
+        const BATCH_SIZE = 3; // Update UI every 3 hairstyles for better perceived performance
+        const loadedStyles = [];
+        let consecutiveFailures = 0;
         
         for (let style = 1; style <= MAX_STYLES; style++) {
           // Calculate resource ID: (hairStyle - 1) * 40 + hairColor * 4 + 2 (down direction) + 100
           const baseGraphic = (style - 1) * 40 + hairColor * 4;
           const resourceId = baseGraphic + 2 + 100;
           
-          loadPromises.push(
-            loadGfx(hairGfxFile, resourceId).then(dataUrl => ({
-              style,
-              dataUrl
-            }))
-          );
-        }
-
-        // Wait for all to load (or fail)
-        const results = await Promise.all(loadPromises);
-        
-        // Filter out null results and consecutive failures
-        const loadedStyles = [];
-        let consecutiveFailures = 0;
-        
-        for (const result of results) {
-          if (result.dataUrl) {
-            loadedStyles.push(result);
+          // Load ONE image at a time
+          const dataUrl = await loadGfx(hairGfxFile, resourceId);
+          
+          if (dataUrl) {
+            loadedStyles.push({ style, dataUrl });
             consecutiveFailures = 0;
+            
+            // Update UI every BATCH_SIZE images for progressive rendering
+            if (loadedStyles.length % BATCH_SIZE === 0) {
+              setHairstyles([...loadedStyles]);
+            }
           } else {
             consecutiveFailures++;
             // If we get 5 consecutive misses after loading some styles, stop
             if (consecutiveFailures >= 5 && loadedStyles.length > 0) {
-              break;
+              setHairstyles(loadedStyles);
+              return;
             }
           }
         }
+        
+        // Final update with all loaded styles
+        setHairstyles(loadedStyles);
 
         setHairstyles(loadedStyles);
       } catch (error) {

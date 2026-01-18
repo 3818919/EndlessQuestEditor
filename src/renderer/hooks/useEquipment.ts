@@ -97,10 +97,15 @@ export function useEquipment() {
     setEquippedItems({});
   }, []);
 
+  const restoreEquipment = useCallback((equipment: EquippedItems) => {
+    setEquippedItems(equipment);
+  }, []);
+
   return {
     equippedItems,
     equipItem,
     unequipSlot,
-    clearAll
+    clearAll,
+    restoreEquipment
   };
 }

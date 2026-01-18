@@ -22,7 +22,8 @@ import {
   CharacterFrameType
 } from './constants';
 
-interface SpriteData {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface _SpriteData {
   image: HTMLImageElement | null;
   width: number;
   height: number;
@@ -236,24 +237,7 @@ export function drawWalking(
     drawSprite(ctx, sprites.back.standing, centerX, centerY, offset.x, offset.y, zoomLevel);
   }
   
-  // Layer 2: Skin walking frame
-  if (sprites.skin?.walking) {
-    drawSkinSprite(ctx, sprites.skin.walking, centerX, centerY, currentFrame, gender, skinTone, direction, 16, zoomLevel);
-  }
-  
-  // Layer 3: Boots walking
-  if (sprites.boots?.walkFrames && sprites.boots.walkFrames[currentFrame]) {
-    const offset = getEquipmentOffset(BOOTS_OFFSETS, gender, state, direction, currentFrame);
-    drawSprite(ctx, sprites.boots.walkFrames[currentFrame], centerX, centerY, offset.x, offset.y, zoomLevel);
-  }
-  
-  // Layer 4: Armor walking
-  if (sprites.armor?.walkFrames && sprites.armor.walkFrames[currentFrame]) {
-    const offset = getEquipmentOffset(ARMOR_OFFSETS, gender, state, direction, currentFrame);
-    drawSprite(ctx, sprites.armor.walkFrames[currentFrame], centerX, centerY, offset.x, offset.y, zoomLevel);
-  }
-  
-  // Layer 5: Weapon
+  // Layer 2: Weapon (drawn behind character)
   const walkFrameType = getCurrentCharacterFrame(state, direction, currentFrame);
   if (sprites.weapon?.frames && WEAPON_VISIBLE[walkFrameType]) {
     const weaponFrameIndex = WEAPON_FRAME_MAP[walkFrameType];
@@ -261,6 +245,23 @@ export function drawWalking(
       const offset = getEquipmentOffset(WEAPON_OFFSETS, gender, state, direction, currentFrame);
       drawSprite(ctx, sprites.weapon.frames[weaponFrameIndex], centerX, centerY, offset.x, offset.y, zoomLevel);
     }
+  }
+  
+  // Layer 3: Skin walking frame
+  if (sprites.skin?.walking) {
+    drawSkinSprite(ctx, sprites.skin.walking, centerX, centerY, currentFrame, gender, skinTone, direction, 16, zoomLevel);
+  }
+  
+  // Layer 4: Boots walking
+  if (sprites.boots?.walkFrames && sprites.boots.walkFrames[currentFrame]) {
+    const offset = getEquipmentOffset(BOOTS_OFFSETS, gender, state, direction, currentFrame);
+    drawSprite(ctx, sprites.boots.walkFrames[currentFrame], centerX, centerY, offset.x, offset.y, zoomLevel);
+  }
+  
+  // Layer 5: Armor walking
+  if (sprites.armor?.walkFrames && sprites.armor.walkFrames[currentFrame]) {
+    const offset = getEquipmentOffset(ARMOR_OFFSETS, gender, state, direction, currentFrame);
+    drawSprite(ctx, sprites.armor.walkFrames[currentFrame], centerX, centerY, offset.x, offset.y, zoomLevel);
   }
   
   // Layer 6: Side shield

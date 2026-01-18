@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 const { app, BrowserWindow, ipcMain, dialog, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+const { BMPConverter } = require('./bmp-converter');
 
 // Set app name before ready event
 app.setName('OakTree');
@@ -41,6 +43,20 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     }
+  });
+
+  // Set Content Security Policy
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          isDev 
+            ? "default-src 'self' 'unsafe-inline' data: blob: http://localhost:* ws://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*; style-src 'self' 'unsafe-inline' http://localhost:*; img-src 'self' data: blob: http://localhost:*"
+            : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:;"
+        ]
+      }
+    });
   });
 
   // Load Vite dev server in development, built files in production
@@ -152,6 +168,24 @@ ipcMain.handle('file:write', async (event, filePath, data) => {
   }
 });
 
+ipcMain.handle('file:readText', async (event, filePath) => {
+  try {
+    const data = await fs.readFile(filePath, 'utf-8');
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('file:writeText', async (event, filePath, text) => {
+  try {
+    await fs.writeFile(filePath, text, 'utf-8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('file:readGFX', async (event, gfxPath, gfxNumber) => {
   try {
     // Format: gfx001.egf, gfx002.egf, etc.
@@ -183,6 +217,21 @@ ipcMain.handle('path:join', async (event, ...paths) => {
   return path.join(...paths);
 });
 
+ipcMain.handle('path:getHomeDir', async () => {
+  const os = require('os');
+  return os.homedir();
+});
+
+ipcMain.handle('path:getCwd', async () => {
+  return process.cwd();
+});
+
+ipcMain.handle('window:setTitle', async (event, title) => {
+  if (mainWindow) {
+    mainWindow.setTitle(title);
+  }
+});
+
 ipcMain.handle('file:exists', async (event, filePath) => {
   try {
     await fs.access(filePath);
@@ -198,5 +247,110 @@ ipcMain.handle('file:isDirectory', async (event, filePath) => {
     return stats.isDirectory();
   } catch (error) {
     return false;
+  }
+});
+
+ipcMain.handle('file:ensureDir', async (event, dirPath) => {
+  try {
+    await fs.mkdir(dirPath, { recursive: true });
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating directory:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('file:listDirectories', async (event, dirPath) => {
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const directories = entries
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+      .map(entry => entry.name);
+    return directories;
+  } catch (error) {
+    console.error('Error listing directories:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('file:deleteDirectory', async (event, dirPath) => {
+  try {
+    await fs.rm(dirPath, { recursive: true, force: true });
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting directory:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Preload all GFX files in the background with progress updates
+ipcMain.handle('file:preloadAllGFX', async (event, gfxPath) => {
+  try {
+    // List all GFX files
+    const files = await fs.readdir(gfxPath);
+    const gfxFiles = files
+      .filter(f => f.match(/^gfx\d{3}\.egf$/i))
+      .map(f => {
+        const match = f.match(/gfx(\d{3})\.egf/i);
+        return {
+          number: parseInt(match[1], 10),
+          fileName: f
+        };
+      })
+      .sort((a, b) => a.number - b.number);
+
+    const total = gfxFiles.length;
+    const cache = new Map();
+    
+    // Load files one by one and send progress updates
+    for (let i = 0; i < gfxFiles.length; i++) {
+      const gfxFile = gfxFiles[i];
+      const filePath = path.join(gfxPath, gfxFile.fileName);
+      
+      try {
+        const data = await fs.readFile(filePath);
+        cache.set(gfxFile.number, Array.from(data));
+        
+        // Send progress update
+        const progress = ((i + 1) / total) * 100;
+        event.sender.send('gfx:loadProgress', {
+          current: i + 1,
+          total,
+          progress,
+          fileName: gfxFile.fileName
+        });
+      } catch (error) {
+        console.error(`Error loading ${gfxFile.fileName}:`, error);
+        // Continue loading other files even if one fails
+      }
+    }
+
+    return { 
+      success: true, 
+      filesLoaded: cache.size,
+      total: gfxFiles.length
+    };
+  } catch (error) {
+    console.error('Error preloading GFX files:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Convert BMP buffer to PNG data URL (server-side)
+ipcMain.handle('file:convertBitmapToPNG', async (event, bitmapData) => {
+  try {
+    const startTime = performance.now();
+    const bmpBuffer = Buffer.from(bitmapData);
+    const dataUrl = await BMPConverter.convertToDataURL(bmpBuffer);
+    const endTime = performance.now();
+    
+    if (endTime - startTime > 50) {
+      console.log(`⏱️  Server-side BMP conversion: ${(endTime - startTime).toFixed(2)}ms`);
+    }
+    
+    return { success: true, dataUrl };
+  } catch (error) {
+    console.error('Error converting BMP:', error);
+    return { success: false, error: error.message };
   }
 });

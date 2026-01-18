@@ -8,9 +8,21 @@ interface ElectronAPI {
   openFile: (filters: Array<{ name: string; extensions: string[] }>) => Promise<string>;
   readFile: (filePath: string) => Promise<{ success: boolean; data?: ArrayBuffer; error?: string }>;
   writeFile: (filePath: string, data: Uint8Array) => Promise<{ success: boolean; error?: string }>;
+  readTextFile: (filePath: string) => Promise<{ success: boolean; data?: string; error?: string }>;
+  writeTextFile: (filePath: string, text: string) => Promise<{ success: boolean; error?: string }>;
   openDirectory: () => Promise<string>;
+  saveFile: (defaultPath: string, filters: Array<{ name: string; extensions: string[] }>) => Promise<string>;
+  preloadAllGFX: (gfxPath: string) => Promise<{ success: boolean; filesLoaded?: number; total?: number; error?: string }>;
+  onGFXLoadProgress: (callback: (data: { current: number; total: number; progress: number; fileName: string }) => void) => () => void;
+  getHomeDir: () => Promise<string>;
+  getCwd: () => Promise<string>;
+  setTitle: (title: string) => Promise<void>;
   fileExists: (filePath: string) => Promise<boolean>;
   isDirectory: (filePath: string) => Promise<boolean>;
+  ensureDir: (dirPath: string) => Promise<{ success: boolean; error?: string }>;
+  listDirectories: (dirPath: string) => Promise<string[]>;
+  deleteDirectory: (dirPath: string) => Promise<{ success: boolean; error?: string }>;
+  convertBitmapToPNG: (bitmapData: Uint8Array | number[]) => Promise<{ success: boolean; dataUrl?: string; error?: string }>;
 }
 
 interface Window {

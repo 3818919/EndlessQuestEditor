@@ -1,162 +1,192 @@
 import { useState, useCallback, useEffect } from 'react';
-import { EIFParser, EIFRecord } from '../../eif-parser';
+import { EIFParser } from '../../eif-parser';
+import { ENFParser } from '../../enf-parser';
 
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && window.electronAPI;
 
-export function useEIFData() {
+export function useEIFData(onChangeCallback?: () => void) {
   const [eifData, setEifData] = useState({ version: 1, items: {} });
-  const [currentFile, setCurrentFile] = useState(
-    localStorage.getItem('lastEifFile') || null
+  const [enfData, setEnfData] = useState({ version: 1, npcs: {} });
+  const [pubDirectory, setPubDirectory] = useState(
+    localStorage.getItem('lastPubDirectory') || null
   );
   const [selectedItemId, setSelectedItemId] = useState(null);
+  const [selectedNpcId, setSelectedNpcId] = useState(null);
+  const [activeTab, setActiveTab] = useState<'items' | 'npcs'>('items');
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const loadFile = useCallback(async () => {
+  const loadDirectory = useCallback(async () => {
     try {
-      let fileData;
-      let filePath;
+      let dirPath;
 
       if (isElectron && window.electronAPI) {
-        // Electron: Use native file dialog
-        filePath = await window.electronAPI.openFile([
-          { name: 'Item Files', extensions: ['eif'] },
-          { name: 'All Files', extensions: ['*'] }
-        ]);
+        // Electron: Use native directory dialog
+        dirPath = await window.electronAPI.openDirectory();
         
-        if (!filePath) return;
+        if (!dirPath) return;
 
-        const response = await window.electronAPI.readFile(filePath);
+        // Load EIF file
+        const eifPath = `${dirPath}/dat001.eif`;
+        const eifResponse = await window.electronAPI.readFile(eifPath);
         
-        if (!response.success) {
-          throw new Error(response.error || 'Failed to read file');
+        if (!eifResponse.success) {
+          throw new Error('Could not find dat001.eif in selected directory');
         }
         
-        fileData = new Uint8Array(response.data);
+        const eifFileData = new Uint8Array(eifResponse.data);
+        const parsedEif = EIFParser.parse(eifFileData.buffer);
+        
+        // Load ENF file
+        const enfPath = `${dirPath}/dtn001.enf`;
+        const enfResponse = await window.electronAPI.readFile(enfPath);
+        
+        let parsedEnf = { records: [] };
+        if (enfResponse.success) {
+          const enfFileData = new Uint8Array(enfResponse.data);
+          parsedEnf = ENFParser.parse(enfFileData.buffer);
+        }
+        
+        // Convert EIF records to items
+        const items = {};
+        if (parsedEif.records) {
+          parsedEif.records.forEach(record => {
+            if (record.name.toLowerCase() !== 'eof') {
+              items[record.id] = {
+                id: record.id,
+                name: record.name,
+                graphic: record.graphic,
+                type: record.type,
+                subType: record.subType,
+                special: record.special,
+                hp: record.hp,
+                tp: record.tp,
+                minDamage: record.minDamage,
+                maxDamage: record.maxDamage,
+                accuracy: record.accuracy,
+                evade: record.evade,
+                armor: record.armor,
+                str: record.str,
+                int: record.int,
+                wis: record.wis,
+                agi: record.agi,
+                con: record.con,
+                cha: record.cha,
+                dolGraphic: record.dollGraphic,
+                gender: record.gender,
+                levelReq: record.levelReq,
+                classReq: record.classReq,
+                strReq: record.strReq,
+                intReq: record.intReq,
+                wisReq: record.wisReq,
+                agiReq: record.agiReq,
+                conReq: record.conReq,
+                chaReq: record.chaReq,
+                weight: record.weight,
+                _record: record
+              };
+            }
+          });
+        }
+        
+        // Convert ENF records to npcs
+        const npcs = {};
+        if (parsedEnf.records) {
+          parsedEnf.records.forEach(record => {
+            if (record.name.toLowerCase() !== 'eof') {
+              npcs[record.id] = {
+                id: record.id,
+                name: record.name,
+                graphic: record.graphic,
+                hp: record.hp,
+                minDamage: record.minDam,
+                maxDamage: record.maxDam,
+                accuracy: record.accuracy,
+                evade: record.evade,
+                armor: record.armor,
+                exp: record.exp,
+                _record: record
+              };
+            }
+          });
+        }
+        
+        setEifData({ version: 1, items });
+        setEnfData({ version: 1, npcs });
+        setPubDirectory(dirPath);
+        localStorage.setItem('lastPubDirectory', dirPath);
+        
+        // Select first item if exists
+        const itemIds = Object.keys(items);
+        if (itemIds.length > 0) {
+          setSelectedItemId(parseInt(itemIds[0]));
+        }
+        
+        // Select first NPC if exists
+        const npcIds = Object.keys(npcs);
+        if (npcIds.length > 0) {
+          setSelectedNpcId(parseInt(npcIds[0]));
+        }
+        
+        console.log(`Loaded ${Object.keys(items).length} items and ${Object.keys(npcs).length} NPCs from ${dirPath}`);
       } else {
-        // Browser: Use HTML file input
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.eif';
-        
-        const file = await new Promise<File | null>((resolve) => {
-          input.onchange = (e) => {
-            const target = e.target as HTMLInputElement;
-            resolve(target.files?.[0] || null);
-          };
-          input.click();
-        });
-        
-        if (!file) return;
-        
-        filePath = file.name;
-        const arrayBuffer = await file.arrayBuffer();
-        fileData = new Uint8Array(arrayBuffer);
-      }
-      
-      const parsed = EIFParser.parse(fileData);
-      
-      console.log('Parsed EIF data:', parsed);
-      
-      // Convert records array to items object keyed by ID
-      // Properties are now flat on the record object
-      const items = {};
-      if (parsed.records) {
-        parsed.records.forEach(record => {
-          if (record.name.toLowerCase() !== 'eof') {
-            items[record.id] = {
-              id: record.id,
-              name: record.name,
-              graphic: record.graphic,
-              type: record.type,
-              subType: record.subType,
-              special: record.special,
-              hp: record.hp,
-              tp: record.tp,
-              minDamage: record.minDam,
-              maxDamage: record.maxDam,
-              accuracy: record.accuracy,
-              evade: record.evade,
-              armor: record.armor,
-              str: record.str,
-              int: record.int,
-              wis: record.wis,
-              agi: record.agi,
-              con: record.con,
-              cha: record.cha,
-              dolGraphic: record.dollGraphic,
-              gender: record.gender,
-              levelReq: record.levelReq,
-              classReq: record.classReq,
-              strReq: record.strReq,
-              intReq: record.intReq,
-              wisReq: record.wisReq,
-              agiReq: record.agiReq,
-              conReq: record.conReq,
-              chaReq: record.chaReq,
-              weight: record.weight,
-              // Keep reference to original record for serialization
-              _record: record
-            };
-          }
-        });
-      }
-      
-      const data = {
-        version: 1,
-        items: items
-      };
-      
-      setEifData(data);
-      setCurrentFile(filePath);
-      localStorage.setItem('lastEifFile', filePath);
-      
-      // Select first item if exists
-      const itemIds = Object.keys(items);
-      if (itemIds.length > 0) {
-        setSelectedItemId(parseInt(itemIds[0]));
+        alert('Directory selection is only available in Electron mode');
       }
     } catch (error) {
-      console.error('Error loading EIF file:', error);
-      alert('Error loading EIF file: ' + error.message);
+      console.error('Error loading pub directory:', error);
+      alert('Error loading pub directory: ' + error.message);
     }
   }, []);
 
-  const loadFileFromPath = useCallback(async (filePath) => {
-    // Only works in Electron
+  const loadDirectoryFromPath = useCallback(async (dirPath: string) => {
     if (!isElectron) {
       console.log('Auto-load not available in browser mode');
       return;
     }
 
     try {
-      if (!filePath) return;
+      if (!dirPath) return;
 
       if (!window.electronAPI) {
         console.error('Electron API not available');
         return;
       }
 
-      const response = await window.electronAPI.readFile(filePath);
-      
-      if (!response.success) {
-        console.error('Failed to read file:', response.error);
-        // Clear invalid path from localStorage
-        localStorage.removeItem('lastEifFile');
-        setCurrentFile(null);
+      // Check if directory still exists
+      const isDir = await window.electronAPI.isDirectory(dirPath);
+      if (!isDir) {
+        console.error('Directory no longer exists:', dirPath);
+        localStorage.removeItem('lastPubDirectory');
+        setPubDirectory(null);
         return;
       }
-      
-      const fileData = new Uint8Array(response.data);
-      const parsed = EIFParser.parse(fileData.buffer);
-      
-      console.log('Parsed EIF data from path:', parsed);
-      
-      // Convert records array to items object keyed by ID
-      // Properties are now flat on the record object
+
+      // Load both EIF and ENF files
+      const eifPath = `${dirPath}/dat001.eif`;
+      const enfPath = `${dirPath}/dtn001.enf`;
+
+      const eifResponse = await window.electronAPI.readFile(eifPath);
+      if (!eifResponse.success) {
+        console.error('Failed to read EIF file:', eifResponse.error);
+        return;
+      }
+
+      const enfResponse = await window.electronAPI.readFile(enfPath);
+      if (!enfResponse.success) {
+        console.error('Failed to read ENF file:', enfResponse.error);
+        return;
+      }
+
+      const eifData = new Uint8Array(eifResponse.data);
+      const enfData = new Uint8Array(enfResponse.data);
+
+      const parsedEif = EIFParser.parse(eifData.buffer);
+      const parsedEnf = ENFParser.parse(enfData.buffer);
+
+      // Convert EIF records to items
       const items = {};
-      if (parsed.records) {
-        parsed.records.forEach(record => {
+      if (parsedEif.records) {
+        parsedEif.records.forEach(record => {
           if (record.name.toLowerCase() !== 'eof') {
             items[record.id] = {
               id: record.id,
@@ -167,8 +197,8 @@ export function useEIFData() {
               special: record.special,
               hp: record.hp,
               tp: record.tp,
-              minDamage: record.minDam,
-              maxDamage: record.maxDam,
+              minDamage: record.minDamage,
+              maxDamage: record.maxDamage,
               accuracy: record.accuracy,
               evade: record.evade,
               armor: record.armor,
@@ -178,7 +208,7 @@ export function useEIFData() {
               agi: record.agi,
               con: record.con,
               cha: record.cha,
-              dolGraphic: record.dollGraphic,
+              dollGraphic: record.dollGraphic,
               gender: record.gender,
               levelReq: record.levelReq,
               classReq: record.classReq,
@@ -189,119 +219,125 @@ export function useEIFData() {
               conReq: record.conReq,
               chaReq: record.chaReq,
               weight: record.weight,
-              // Keep reference to original record for serialization
               _record: record
             };
           }
         });
       }
-      
-      const data = {
-        version: 1,
-        items: items
-      };
-      
-      setEifData(data);
-      setCurrentFile(filePath);
-      
-      // Select first item if exists
+
+      // Convert ENF records to npcs
+      const npcs = {};
+      if (parsedEnf.records) {
+        parsedEnf.records.forEach(record => {
+          if (record.name.toLowerCase() !== 'eof') {
+            npcs[record.id] = {
+              id: record.id,
+              name: record.name,
+              graphic: record.graphic,
+              hp: record.hp,
+              minDamage: record.minDamage,
+              maxDamage: record.maxDamage,
+              accuracy: record.accuracy,
+              evade: record.evade,
+              armor: record.armor,
+              exp: record.exp,
+              _record: record
+            };
+          }
+        });
+      }
+
+      setEifData({ version: 1, items });
+      setEnfData({ version: 1, npcs });
+      setPubDirectory(dirPath);
+      localStorage.setItem('lastPubDirectory', dirPath);
+
+      // Select first item/npc if exists
       const itemIds = Object.keys(items);
       if (itemIds.length > 0) {
         setSelectedItemId(parseInt(itemIds[0]));
       }
-      
-      console.log(`Auto-loaded EIF file: ${filePath}`);
+      const npcIds = Object.keys(npcs);
+      if (npcIds.length > 0) {
+        setSelectedNpcId(parseInt(npcIds[0]));
+      }
+
+      console.log(`Auto-loaded pub directory: ${dirPath}`);
     } catch (error) {
-      console.error('Error loading EIF file from path:', error);
-      // Clear invalid path from localStorage
-      localStorage.removeItem('lastEifFile');
-      setCurrentFile(null);
+      console.error('Error loading pub directory from path:', error);
+      localStorage.removeItem('lastPubDirectory');
+      setPubDirectory(null);
     }
   }, []);
 
-  // Auto-load the last opened EIF file on startup
+  // Auto-load disabled - we now use JSON project files
+  // Projects are loaded via App.tsx loadFromJSON()
   useEffect(() => {
-    if (!isInitialized && currentFile) {
-      loadFileFromPath(currentFile);
+    if (!isInitialized) {
       setIsInitialized(true);
     }
-  }, [isInitialized, currentFile, loadFileFromPath]);
+  }, [isInitialized]);
 
-  const saveFile = useCallback(async () => {
-    if (!currentFile) {
-      alert('No file loaded to save');
+  const saveFiles = useCallback(async () => {
+    if (!pubDirectory) {
+      alert('No directory loaded to save');
       return;
     }
 
     try {
-      // Convert flattened items back to EIFRecord format for serialization
-      const records = Object.values(eifData.items).map((item: any) => {
-        // Use the stored _record if available, otherwise create new
-        const record = item._record || new EIFRecord(item.id);
-        
-        // Update record properties from flattened item
-        record.name = item.name;
-        record.graphic = item.graphic || 0;
-        record.type = item.type || 0;
-        record.subType = item.subType || 0;
-        record.special = item.special || 0;
-        record.hp = item.hp || 0;
-        record.tp = item.tp || 0;
-        record.minDam = item.minDamage || 0;
-        record.maxDam = item.maxDamage || 0;
-        record.accuracy = item.accuracy || 0;
-        record.evade = item.evade || 0;
-        record.armor = item.armor || 0;
-        record.str = item.str || 0;
-        record.int = item.int || 0;
-        record.wis = item.wis || 0;
-        record.agi = item.agi || 0;
-        record.con = item.con || 0;
-        record.cha = item.cha || 0;
-        record.dollGraphic = item.dolGraphic || 0;
-        record.gender = item.gender || 0;
-        record.levelReq = item.levelReq || 0;
-        record.classReq = item.classReq || 0;
-        record.strReq = item.strReq || 0;
-        record.intReq = item.intReq || 0;
-        record.wisReq = item.wisReq || 0;
-        record.agiReq = item.agiReq || 0;
-        record.conReq = item.conReq || 0;
-        record.chaReq = item.chaReq || 0;
-        record.weight = item.weight || 0;
-        
-        return record;
-      });
+      // Convert items to parser format
+      const eifRecords = Object.values(eifData.items);
+
+      // Convert NPCs to parser format  
+      const enfRecords = Object.values(enfData.npcs);
       
-      const dataToSave = {
+      const eifDataToSave = {
         fileType: 'EIF',
-        checksum: [0, 0],
-        totalLength: records.length,
-        records: records
+        version: 1,
+        records: eifRecords
+      };
+
+      const enfDataToSave = {
+        fileType: 'ENF',
+        version: 1,
+        records: enfRecords
       };
       
-      const fileData = EIFParser.serialize(dataToSave);
+      const eifFileData = EIFParser.serialize(eifDataToSave);
+      const enfFileData = ENFParser.serialize(enfDataToSave);
       
       if (isElectron && window.electronAPI) {
-        // Electron: Save using native file API
-        await window.electronAPI.writeFile(currentFile, fileData);
-        alert('File saved successfully!');
+        const eifPath = `${pubDirectory}/dat001.eif`;
+        const enfPath = `${pubDirectory}/dtn001.enf`;
+        
+        await window.electronAPI.writeFile(eifPath, eifFileData);
+        await window.electronAPI.writeFile(enfPath, enfFileData);
+        alert('Files saved successfully!');
       } else {
-        // Browser: Download as file
-        const blob = new Blob([fileData as BlobPart], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = currentFile;
-        a.click();
-        URL.revokeObjectURL(url);
-        alert('File downloaded successfully!');
+        // Browser: Download both files
+        const eifBlob = new Blob([eifFileData as BlobPart], { type: 'application/octet-stream' });
+        const eifUrl = URL.createObjectURL(eifBlob);
+        const eifLink = document.createElement('a');
+        eifLink.href = eifUrl;
+        eifLink.download = 'dat001.eif';
+        eifLink.click();
+        URL.revokeObjectURL(eifUrl);
+
+        const enfBlob = new Blob([enfFileData as BlobPart], { type: 'application/octet-stream' });
+        const enfUrl = URL.createObjectURL(enfBlob);
+        const enfLink = document.createElement('a');
+        enfLink.href = enfUrl;
+        enfLink.download = 'dtn001.enf';
+        enfLink.click();
+        URL.revokeObjectURL(enfUrl);
+
+        alert('Files downloaded successfully!');
       }
     } catch (error) {
-      console.error('Error saving EIF file:', error);
-      alert('Error saving EIF file: ' + error.message);
+      console.error('Error saving pub files:', error);
+      alert('Error saving pub files: ' + error.message);
     }
-  }, [currentFile, eifData]);
+  }, [pubDirectory, eifData, enfData]);
 
   const addItem = useCallback(() => {
     const newId = Math.max(0, ...Object.keys(eifData.items).map(Number)) + 1;
@@ -384,21 +420,98 @@ export function useEIFData() {
         [itemId]: { ...prev.items[itemId], ...updates }
       }
     }));
-  }, []);
+    if (onChangeCallback) {
+      onChangeCallback();
+    }
+  }, [onChangeCallback]);
+
+  const addNpc = useCallback(() => {
+    const newId = Math.max(0, ...Object.keys(enfData.npcs).map(Number)) + 1;
+    const newNpc = {
+      id: newId,
+      name: `New NPC ${newId}`,
+      graphic: 1,
+      hp: 10,
+      minDamage: 1,
+      maxDamage: 2,
+      accuracy: 5,
+      evade: 5,
+      armor: 0,
+      exp: 10
+    };
+
+    setEnfData(prev => ({
+      ...prev,
+      npcs: { ...prev.npcs, [newId]: newNpc }
+    }));
+    setSelectedNpcId(newId);
+  }, [enfData]);
+
+  const deleteNpc = useCallback((npcId) => {
+    if (!confirm(`Delete NPC ${npcId}?`)) return;
+
+    setEnfData(prev => {
+      const newNpcs = { ...prev.npcs };
+      delete newNpcs[npcId];
+      return { ...prev, npcs: newNpcs };
+    });
+
+    if (selectedNpcId === npcId) {
+      const remainingIds = Object.keys(enfData.npcs).filter(id => parseInt(id) !== npcId);
+      setSelectedNpcId(remainingIds.length > 0 ? parseInt(remainingIds[0]) : null);
+    }
+  }, [enfData, selectedNpcId]);
+
+  const duplicateNpc = useCallback((npcId) => {
+    const npc = enfData.npcs[npcId];
+    if (!npc) return;
+
+    const newId = Math.max(0, ...Object.keys(enfData.npcs).map(Number)) + 1;
+    const newNpc = { ...npc, id: newId, name: `${npc.name} (Copy)` };
+
+    setEnfData(prev => ({
+      ...prev,
+      npcs: { ...prev.npcs, [newId]: newNpc }
+    }));
+    setSelectedNpcId(newId);
+  }, [enfData]);
+
+  const updateNpc = useCallback((npcId, updates) => {
+    setEnfData(prev => ({
+      ...prev,
+      npcs: {
+        ...prev.npcs,
+        [npcId]: { ...prev.npcs[npcId], ...updates }
+      }
+    }));
+    if (onChangeCallback) {
+      onChangeCallback();
+    }
+  }, [onChangeCallback]);
 
   return {
     eifData,
-    currentFile,
+    enfData,
+    pubDirectory,
     selectedItemId,
+    selectedNpcId,
+    activeTab,
     setSelectedItemId,
-    loadFile,
-    loadFileFromPath,
-    saveFile,
+    setSelectedNpcId,
+    setActiveTab,
+    loadDirectory,
+    loadDirectoryFromPath,
+    saveFiles,
     addItem,
     deleteItem,
     duplicateItem,
     updateItem,
+    addNpc,
+    deleteNpc,
+    duplicateNpc,
+    updateNpc,
     setEifData,
-    setCurrentFile
+    setEnfData,
+    setPubDirectory
   };
 }

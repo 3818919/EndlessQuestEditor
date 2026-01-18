@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 
-export default function Tooltip({ children, content }) {
+interface TooltipProps {
+  children: React.ReactNode;
+  content: string;
+}
+
+export default function Tooltip({ children, content }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 

@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ItemPreview from './ItemPreview';
-import SearchIcon from '@mui/icons-material/Search';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import SettingsIcon from '@mui/icons-material/Settings';
-import SaveIcon from '@mui/icons-material/Save';
+import ListFilter from '../ListFilter';
+import GenericList, { ListItem } from '../GenericList';
+import FilterPopup from '../FilterPopup';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 
@@ -44,19 +43,18 @@ export default function ItemList({
   selectedItemId,
   onSelectItem,
   onAddItem,
-  onDeleteItem,
-  onDuplicateItem,
+  onDeleteItem: _onDeleteItem,
+  onDuplicateItem: _onDuplicateItem,
   onLoadFile,
-  onSaveFile,
   currentFile,
   onSelectGfxFolder,
   gfxFolder,
   loadGfx,
+  preloadGfxBatch,
   onEquipItem,
   showSettingsModal,
   setShowSettingsModal,
   leftPanelMinimized,
-  setLeftPanelMinimized,
   onResetFileSelection,
   onLoadEIFFromPath,
   onSelectGfxFromPath
@@ -68,26 +66,97 @@ export default function ItemList({
   onDeleteItem: (id: number) => void;
   onDuplicateItem: (id: number) => void;
   onLoadFile: () => void;
-  onSaveFile: () => void;
   currentFile: string | null;
   onSelectGfxFolder: () => void;
   gfxFolder: string | null;
   loadGfx: (gfxNumber: number, resourceId?: number) => Promise<any>;
+  preloadGfxBatch?: (requests: Array<{ gfxNumber: number; resourceId: number }>) => void;
   onEquipItem?: (item: any) => void;
   showSettingsModal: boolean;
   setShowSettingsModal: (show: boolean) => void;
   leftPanelMinimized: boolean;
-  setLeftPanelMinimized: (minimized: boolean) => void;
   onResetFileSelection: () => void;
   onLoadEIFFromPath: (path: string) => void;
   onSelectGfxFromPath: (path: string) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [activeLeftTab, setActiveLeftTab] = useState('items');
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [eifDragOver, setEifDragOver] = useState(false);
   const [gfxDragOver, setGfxDragOver] = useState(false);
+  const [_scrollToSelected, setScrollToSelected] = useState(false);
+  const prevSelectedItemId = React.useRef(selectedItemId);
+
+  // Memoize filtered items
+  const filteredItems = useMemo(() => {
+    const itemArray = Object.values(items);
+    
+    return itemArray.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           item.id.toString().includes(searchQuery);
+      const matchesType = typeFilter === 'all' || (item.type !== undefined && item.type.toString() === typeFilter);
+      
+      return matchesSearch && matchesType;
+    });
+  }, [items, searchQuery, typeFilter]);
+
+  // Detect when item is selected externally (e.g., from drops table)
+  useEffect(() => {
+    if (selectedItemId !== null && selectedItemId !== prevSelectedItemId.current) {
+      // Check if the selected item is in the current filtered list
+      const isInFilteredList = filteredItems.some(item => item.id === selectedItemId);
+      
+      // Only clear search/filters if the item is NOT in the current filtered list
+      // This means it was selected from an external source (like drops table)
+      if (!isInFilteredList) {
+        setSearchQuery('');
+        setTypeFilter('all');
+      }
+      
+      // Delay scroll to ensure DOM has updated
+      setTimeout(() => {
+        setScrollToSelected(true);
+        // Reset after scrolling completes
+        const timer = setTimeout(() => setScrollToSelected(false), 1000);
+        return () => clearTimeout(timer);
+      }, 100);
+      
+      prevSelectedItemId.current = selectedItemId;
+    }
+    prevSelectedItemId.current = selectedItemId;
+  }, [selectedItemId, filteredItems]);
+
+  // Preload visible items' graphics when the component mounts or items change
+  useEffect(() => {
+    if (!preloadGfxBatch || !gfxFolder) return;
+
+    // Get first ~50 items to preload (visible viewport range)
+    const itemsToPreload = Object.values(items).slice(0, 50);
+    const preloadRequests: Array<{ gfxNumber: number; resourceId: number }> = [];
+
+    itemsToPreload.forEach((item: any) => {
+      if (item.graphic) {
+        // Preload icon graphics (GFX 23)
+        const iconResourceId = (2 * item.graphic) + 100;
+        preloadRequests.push({ gfxNumber: 23, resourceId: iconResourceId });
+      }
+    });
+
+    // Start background preloading (non-blocking)
+    if (preloadRequests.length > 0) {
+      // Defer slightly to not block initial render
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(() => {
+          preloadGfxBatch(preloadRequests);
+        }, { timeout: 500 });
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          preloadGfxBatch(preloadRequests);
+        }, 100);
+      }
+    }
+  }, [items, gfxFolder, preloadGfxBatch]);
 
   // Drag and drop handlers for EIF
   const handleEifDragOver = (e: React.DragEvent) => {
@@ -146,7 +215,7 @@ export default function ItemList({
         const item = items[0];
         const file = item.getAsFile();
         if (file && 'path' in file) {
-          let path = (file as ElectronFile).path;
+          const path = (file as ElectronFile).path;
           const isDir = await window.electronAPI.isDirectory(path);
           if (isDir) {
             onSelectGfxFromPath(path);
@@ -159,24 +228,33 @@ export default function ItemList({
     }
   };
 
-  const filteredItems = useMemo(() => {
-    const itemArray = Object.values(items);
-    
-    return itemArray.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           item.id.toString().includes(searchQuery);
-      const matchesType = typeFilter === 'all' || (item.type !== undefined && item.type.toString() === typeFilter);
-      
-      return matchesSearch && matchesType;
-    });
-  }, [items, searchQuery, typeFilter]);
+  const listItems: ListItem[] = useMemo(() => {
+    return filteredItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      icon: (
+        <ItemPreview 
+          item={item} 
+          gfxFolder={gfxFolder} 
+          loadGfx={loadGfx}
+          size="small"
+          lazy={true}
+          mode="icon"
+        />
+      ),
+      secondaryText: ITEM_TYPES[item.type] || 'Unknown',
+      hoverText: leftPanelMinimized ? `${item.name} (#${item.id})` : ITEM_TYPES[item.type] || 'Unknown',
+      data: item
+    }));
+  }, [filteredItems, gfxFolder, loadGfx, leftPanelMinimized]);
 
-  const handleDragStart = (e, item) => {
-    e.dataTransfer.setData('application/json', JSON.stringify(item));
+  const handleDragStart = (e, listItem: ListItem) => {
+    e.dataTransfer.setData('application/json', JSON.stringify(listItem.data));
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  const handleDoubleClick = (item) => {
+  const handleDoubleClick = (listItem: ListItem) => {
+    const item = listItem.data;
     // Only equip if it's an equippable item type (10-21)
     if (item.type >= 10 && item.type <= 21 && onEquipItem) {
       onEquipItem(item);
@@ -185,144 +263,64 @@ export default function ItemList({
 
   return (
     <>
-      <div className="left-vertical-sidebar">
-        <button
-          className={`left-sidebar-button ${(activeLeftTab === 'items' && !leftPanelMinimized) ? 'active' : ''}`}
-          onClick={() => setLeftPanelMinimized(!leftPanelMinimized)}
-          title="Items"
+      <FilterPopup
+        show={showFilterPopup}
+        onClose={() => setShowFilterPopup(false)}
+        title="Search & Filter"
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search items..."
+      >
+        <select 
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="type-filter"
         >
-          <ListAltIcon />
-        </button>
-        <button
-          className="left-sidebar-button save-button"
-          onClick={onSaveFile}
-          disabled={!currentFile}
-          title="Save EIF File"
-        >
-          <SaveIcon />
-        </button>
-        <div className="sidebar-spacer"></div>
-        <button
-          className="left-sidebar-button"
-          onClick={() => setShowSettingsModal(true)}
-          title="Settings"
-        >
-          <SettingsIcon />
-        </button>
-      </div>
-      
-      {showFilterPopup && (
-        <div className="filter-popup-overlay" onClick={() => setShowFilterPopup(false)}>
-          <div className="filter-popup" onClick={(e) => e.stopPropagation()}>
-            <div className="filter-popup-content">
-              <h3>Search & Filter</h3>
-              <input
-                type="text"
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-              />
-              <select 
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="type-filter"
-              >
-                <option value="all">All Types</option>
-                {Object.entries(ITEM_TYPES).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              <button 
-                onClick={() => setShowFilterPopup(false)}
-                className="btn btn-secondary btn-small"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          <option value="all">All Types</option>
+          {Object.entries(ITEM_TYPES).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </FilterPopup>
       
       <div className={`item-list-content ${leftPanelMinimized ? 'minimized' : ''}`}>
-        <div className="item-list-filters">
-          {leftPanelMinimized ? (
-            <button
-              className="search-filter-button"
-              onClick={() => setShowFilterPopup(!showFilterPopup)}
-              title="Search & Filter"
-            >
-              <SearchIcon />
-            </button>
-          ) : (
-            <>
-              <input
-                type="text"
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-              />
-              
-              <select 
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="type-filter"
-              >
-                <option value="all">All Types</option>
-                {Object.entries(ITEM_TYPES).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
+        <ListFilter
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search items..."
+          minimized={leftPanelMinimized}
+          onToggleSearch={() => setShowFilterPopup(!showFilterPopup)}
+        >
+          <select 
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="type-filter"
+          >
+            <option value="all">All Types</option>
+            {Object.entries(ITEM_TYPES).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
 
-              <button 
-                onClick={onAddItem}
-                className="btn btn-success btn-small"
-                disabled={!currentFile}
-              >
-                + Add Item
-              </button>
-            </>
-          )}
-        </div>
+          <button 
+            onClick={onAddItem}
+            className="btn btn-success btn-small"
+            disabled={!currentFile}
+          >
+            + Add Item
+          </button>
+        </ListFilter>
 
-        <div className="items-scroll">
-          {filteredItems.length === 0 ? (
-            <div className="empty-state">
-              <p>{currentFile ? 'No items match your search' : 'No file loaded'}</p>
-            </div>
-          ) : (
-            <ul className="items-list">
-              {filteredItems.map(item => (
-                <li
-                  key={item.id}
-                  className={`item-row ${selectedItemId === item.id ? 'selected' : ''}`}
-                  onClick={() => onSelectItem(item.id)}
-                  onDoubleClick={() => handleDoubleClick(item)}
-                  draggable={true}
-                  onDragStart={(e) => handleDragStart(e, item)}
-                  title={leftPanelMinimized ? `${item.name} (#${item.id})` : undefined}
-                >
-                  <ItemPreview 
-                    item={item} 
-                    gfxFolder={gfxFolder} 
-                    loadGfx={loadGfx}
-                    size="small"
-                    lazy={true}
-                    mode="icon"
-                  />
-                  {!leftPanelMinimized && (
-                  <div className="item-info">
-                    <span className="item-id">#{item.id}</span>
-                    <span className="item-name" title={item.name}>{item.name}</span>
-                    <span className="item-type" title={ITEM_TYPES[item.type] || 'Unknown'}>{ITEM_TYPES[item.type] || 'Unknown'}</span>
-                  </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <GenericList
+          items={listItems}
+          selectedId={selectedItemId}
+          onSelectItem={onSelectItem}
+          onDoubleClick={handleDoubleClick}
+          minimized={leftPanelMinimized}
+          emptyMessage={currentFile ? 'No items match your search' : 'No file loaded'}
+          draggable={true}
+          onDragStart={handleDragStart}
+        />
       </div>
 
       {showSettingsModal && (

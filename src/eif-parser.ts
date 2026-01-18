@@ -1,244 +1,68 @@
 /**
  * EIF (Endless Item File) Parser
- * Using eolib for pub file parsing
+ * Simplified wrapper around eolib
  */
 
-import { EifRecord, EoReader, EoWriter } from 'eolib';
+import { Eif, EifRecord, EoReader, EoWriter } from 'eolib';
 
-// Adapter to convert eolib EifRecord to our application's format
-class EIFRecord {
-  id: number;
-  name: string;
-  graphic: number;
-  type: number;
-  subType: number;
-  special: number;
-  hp: number;
-  tp: number;
-  minDam: number;
-  maxDam: number;
-  accuracy: number;
-  evade: number;
-  armor: number;
-  str: number;
-  int: number;
-  wis: number;
-  agi: number;
-  con: number;
-  cha: number;
-  light: number;
-  dark: number;
-  earth: number;
-  air: number;
-  water: number;
-  fire: number;
-  scrollMap: number;
-  dollGraphic: number;
-  expReward: number;
-  hairColor: number;
-  effect: number;
-  key: number;
-  beerPotency: number;
-  gender: number;
-  scrollX: number;
-  scrollY: number;
-  dualWieldDollGraphic: number;
-  levelReq: number;
-  classReq: number;
-  strReq: number;
-  intReq: number;
-  wisReq: number;
-  agiReq: number;
-  conReq: number;
-  chaReq: number;
-  element: number;
-  elementPower: number;
-  weight: number;
-  size: number;
-  
-  constructor(id = 0, eifRecord?: any) {
-    this.id = id;
-    
-    if (eifRecord) {
-      this.name = eifRecord.name || '';
-      this.graphic = eifRecord.graphicId || 0;
-      this.type = eifRecord.type || 0;
-      this.subType = eifRecord.subtype || 0;
-      this.special = eifRecord.special || 0;
-      this.hp = eifRecord.hp || 0;
-      this.tp = eifRecord.tp || 0;
-      this.minDam = eifRecord.minDamage || 0;
-      this.maxDam = eifRecord.maxDamage || 0;
-      this.accuracy = eifRecord.accuracy || 0;
-      this.evade = eifRecord.evade || 0;
-      this.armor = eifRecord.armor || 0;
-      this.str = eifRecord.str || 0;
-      this.int = eifRecord.intl || 0;  // eolib uses 'intl' not 'int'
-      this.wis = eifRecord.wis || 0;
-      this.agi = eifRecord.agi || 0;
-      this.con = eifRecord.con || 0;
-      this.cha = eifRecord.cha || 0;
-      this.light = eifRecord.lightResistance || 0;
-      this.dark = eifRecord.darkResistance || 0;
-      this.earth = eifRecord.earthResistance || 0;
-      this.air = eifRecord.airResistance || 0;
-      this.water = eifRecord.waterResistance || 0;
-      this.fire = eifRecord.fireResistance || 0;
-      
-      // Handle the 3-byte union value based on type
-      this.scrollMap = eifRecord.spec1 || 0;
-      this.dollGraphic = eifRecord.spec1 || 0;
-      this.expReward = eifRecord.spec1 || 0;
-      this.hairColor = eifRecord.spec1 || 0;
-      this.effect = eifRecord.spec1 || 0;
-      this.key = eifRecord.spec1 || 0;
-      this.beerPotency = eifRecord.spec1 || 0;
-      
-      this.gender = eifRecord.spec2 || 0;
-      this.scrollX = eifRecord.spec2 || 0;
-      this.scrollY = eifRecord.spec3 || 0;
-      this.dualWieldDollGraphic = eifRecord.spec3 || 0;
-      
-      this.levelReq = eifRecord.levelRequirement || 0;
-      this.classReq = eifRecord.classRequirement || 0;
-      this.strReq = eifRecord.strRequirement || 0;
-      this.intReq = eifRecord.intRequirement || 0;
-      this.wisReq = eifRecord.wisRequirement || 0;
-      this.agiReq = eifRecord.agiRequirement || 0;
-      this.conReq = eifRecord.conRequirement || 0;
-      this.chaReq = eifRecord.chaRequirement || 0;
-      
-      this.element = eifRecord.element || 0;
-      this.elementPower = eifRecord.elementDamage || 0;
-      this.weight = eifRecord.weight || 0;
-      this.size = eifRecord.size || 0;
-    } else {
-      // Initialize defaults
-      this.name = '';
-      this.graphic = 0;
-      this.type = 0;
-      this.subType = 0;
-      this.special = 0;
-      this.hp = 0;
-      this.tp = 0;
-      this.minDam = 0;
-      this.maxDam = 0;
-      this.accuracy = 0;
-      this.evade = 0;
-      this.armor = 0;
-      this.str = 0;
-      this.int = 0;
-      this.wis = 0;
-      this.agi = 0;
-      this.con = 0;
-      this.cha = 0;
-      this.light = 0;
-      this.dark = 0;
-      this.earth = 0;
-      this.air = 0;
-      this.water = 0;
-      this.fire = 0;
-      this.scrollMap = 0;
-      this.dollGraphic = 0;
-      this.expReward = 0;
-      this.hairColor = 0;
-      this.effect = 0;
-      this.key = 0;
-      this.beerPotency = 0;
-      this.gender = 0;
-      this.scrollX = 0;
-      this.scrollY = 0;
-      this.dualWieldDollGraphic = 0;
-      this.levelReq = 0;
-      this.classReq = 0;
-      this.strReq = 0;
-      this.intReq = 0;
-      this.wisReq = 0;
-      this.agiReq = 0;
-      this.conReq = 0;
-      this.chaReq = 0;
-      this.element = 0;
-      this.elementPower = 0;
-      this.weight = 0;
-      this.size = 0;
-    }
-  }
-  
-  // Convert back to eolib format for serialization
-  toEolib() {
-    return {
-      name: this.name,
-      graphicId: this.graphic,
-      type: this.type,
-      subtype: this.subType,
-      special: this.special,
-      hp: this.hp,
-      tp: this.tp,
-      minDamage: this.minDam,
-      maxDamage: this.maxDam,
-      accuracy: this.accuracy,
-      evade: this.evade,
-      armor: this.armor,
-      str: this.str,
-      intl: this.int,
-      wis: this.wis,
-      agi: this.agi,
-      con: this.con,
-      cha: this.cha,
-      lightResistance: this.light,
-      darkResistance: this.dark,
-      earthResistance: this.earth,
-      airResistance: this.air,
-      waterResistance: this.water,
-      fireResistance: this.fire,
-      spec1: this.dollGraphic,
-      spec2: this.gender,
-      spec3: this.scrollY,
-      levelRequirement: this.levelReq,
-      classRequirement: this.classReq,
-      strRequirement: this.strReq,
-      intRequirement: this.intReq,
-      wisRequirement: this.wisReq,
-      agiRequirement: this.agiReq,
-      conRequirement: this.conReq,
-      chaRequirement: this.chaReq,
-      element: this.element,
-      elementDamage: this.elementPower,
-      weight: this.weight,
-      size: this.size
-    };
-  }
+/**
+ * Convert eolib EifRecord to application format
+ * Maps eolib field names to application field names for consistency with JSON serialization
+ */
+function convertEifRecord(eifRecord: EifRecord, id: number) {
+  return {
+    id,
+    name: eifRecord.name || '',
+    graphic: eifRecord.graphicId || 0,
+    type: eifRecord.type || 0,
+    subType: eifRecord.subtype || 0,
+    special: eifRecord.special || 0,
+    hp: eifRecord.hp || 0,
+    tp: eifRecord.tp || 0,
+    minDamage: eifRecord.minDamage || 0,
+    maxDamage: eifRecord.maxDamage || 0,
+    accuracy: eifRecord.accuracy || 0,
+    evade: eifRecord.evade || 0,
+    armor: eifRecord.armor || 0,
+    str: eifRecord.str || 0,
+    int: eifRecord.intl || 0,  // eolib uses 'intl' not 'int'
+    wis: eifRecord.wis || 0,
+    agi: eifRecord.agi || 0,
+    con: eifRecord.con || 0,
+    cha: eifRecord.cha || 0,
+    dollGraphic: eifRecord.spec1 || 0,  // spec1 stores dollGraphic for equipment
+    gender: eifRecord.spec2 || 0,       // spec2 stores gender for equipment
+    levelReq: eifRecord.levelRequirement || 0,
+    classReq: eifRecord.classRequirement || 0,
+    strReq: eifRecord.strRequirement || 0,
+    intReq: eifRecord.intRequirement || 0,
+    wisReq: eifRecord.wisRequirement || 0,
+    agiReq: eifRecord.agiRequirement || 0,
+    conReq: eifRecord.conRequirement || 0,
+    chaReq: eifRecord.chaRequirement || 0,
+    weight: eifRecord.weight || 0,
+    size: eifRecord.size || 0
+  };
 }
 
 class EIFParser {
   static parse(fileData: ArrayBuffer) {
-    const data = new Uint8Array(fileData);
-    const reader = new EoReader(data);
-    
     try {
-      // Read EIF header
-      const fileType = String.fromCharCode(...reader.getBytes(3)); // "EIF"
-      if (fileType !== 'EIF') {
-        throw new Error(`Invalid file type: expected EIF, got ${fileType}`);
-      }
+      const data = new Uint8Array(fileData);
+      const reader = new EoReader(data);
       
-      const checksum = reader.getInt(); // CRC32 checksum
-      const numItems = reader.getShort(); // Number of items
-      const version = reader.getByte(); // Version byte
+      // Use eolib's built-in deserializer
+      const eif = Eif.deserialize(reader);
       
-      // Parse all item records
-      const records: EIFRecord[] = [];
-      for (let i = 0; i < numItems; i++) {
-        const eifRecord = EifRecord.deserialize(reader);
-        // Skip EOF markers
-        if (eifRecord.name.toLowerCase() !== 'eof') {
-          records.push(new EIFRecord(i + 1, eifRecord));
-        }
-      }
+      // Convert to application format, filtering out EOF markers
+      const records = eif.items
+        .filter(item => item.name.toLowerCase() !== 'eof')
+        .map((item, index) => convertEifRecord(item, index + 1));
       
       return {
         fileType: 'EIF',
-        totalLength: numItems,
+        totalLength: eif.totalItemsCount,
+        version: eif.version,
         records
       };
     } catch (error: any) {
@@ -246,25 +70,111 @@ class EIFParser {
       throw new Error(`Invalid EIF file: ${error.message}`);
     }
   }
-
-  static serialize(eifData: any) {
-    const writer = new EoWriter();
-    
-    // Write EIF header
-    writer.addBytes(new Uint8Array([69, 73, 70])); // "EIF"
-    writer.addInt(0); // Placeholder for checksum
-    writer.addShort(eifData.records.length);
-    writer.addByte(1); // Version
-    
-    // Write all item records
-    for (const record of eifData.records) {
-      const eifRecord = record.toEolib();
-      EifRecord.serialize(writer, eifRecord);
+  
+  static serialize(data: any) {
+    try {
+      const writer = new EoWriter();
+      
+      // Handle both formats: { records: [] } and { items: {} }
+      let recordsArray: any[];
+      if (data.records && Array.isArray(data.records)) {
+        recordsArray = data.records;
+      } else if (data.items) {
+        // Convert items object to array
+        recordsArray = Object.values(data.items);
+      } else {
+        throw new Error('Invalid data format: missing records or items');
+      }
+      
+      // Create Eif object
+      const eif = new Eif();
+      eif.totalItemsCount = recordsArray.length;
+      eif.version = data.version || 1;
+      eif.rid = [recordsArray.length, recordsArray.length]; // Required by eolib for tracking
+      
+      // Sort records by ID to ensure correct ordering
+      const sortedRecords = [...recordsArray].sort((a, b) => (a.id || 0) - (b.id || 0));
+      
+      console.log('First record to serialize:', sortedRecords[0]);
+      
+      // Convert records back to EifRecord format
+      // Create actual EifRecord instances
+      eif.items = sortedRecords.map((record: any, index: number) => {
+        const eifRecord = new EifRecord();
+        
+        // Set all properties
+        eifRecord.name = record.name || '';
+        eifRecord.graphicId = record.graphic || 0;
+        eifRecord.type = record.type || 0;
+        eifRecord.subtype = record.subType || 0;
+        eifRecord.special = record.special || 0;
+        eifRecord.hp = record.hp || 0;
+        eifRecord.tp = record.tp || 0;
+        eifRecord.minDamage = record.minDamage || 0;
+        eifRecord.maxDamage = record.maxDamage || 0;
+        eifRecord.accuracy = record.accuracy || 0;
+        eifRecord.evade = record.evade || 0;
+        eifRecord.armor = record.armor || 0;
+        eifRecord.returnDamage = 0;  // Not used in this version
+        eifRecord.str = record.str || 0;
+        eifRecord.intl = record.int || 0;
+        eifRecord.wis = record.wis || 0;
+        eifRecord.agi = record.agi || 0;
+        eifRecord.con = record.con || 0;
+        eifRecord.cha = record.cha || 0;
+        eifRecord.lightResistance = 0;
+        eifRecord.darkResistance = 0;
+        eifRecord.earthResistance = 0;
+        eifRecord.airResistance = 0;
+        eifRecord.waterResistance = 0;
+        eifRecord.fireResistance = 0;
+        eifRecord.spec1 = record.dollGraphic || 0;
+        eifRecord.spec2 = record.gender || 0;
+        eifRecord.spec3 = 0;  // scroll_y, not used in this version
+        eifRecord.levelRequirement = record.levelReq || 0;
+        eifRecord.classRequirement = record.classReq || 0;
+        eifRecord.strRequirement = record.strReq || 0;
+        eifRecord.intRequirement = record.intReq || 0;
+        eifRecord.wisRequirement = record.wisReq || 0;
+        eifRecord.agiRequirement = record.agiReq || 0;
+        eifRecord.conRequirement = record.conReq || 0;
+        eifRecord.chaRequirement = record.chaReq || 0;
+        eifRecord.element = 0;  // Element enum, 0 = none
+        eifRecord.elementDamage = 0;
+        eifRecord.weight = record.weight || 0;
+        eifRecord.size = record.size || 0;  // ItemSize enum, 0 = size1x1
+        
+        // Set rid using Object.defineProperty
+        Object.defineProperty(eifRecord, 'rid', {
+          value: index + 1,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+        
+        return eifRecord;
+      });
+      
+      console.log('First EifRecord after mapping:', eif.items[0]);
+      console.log('First EifRecord rid:', (eif.items[0] as any).rid);
+      
+      // Check if any records are missing rid
+      const missingRid = eif.items.find((item: any, idx: number) => !item.rid);
+      if (missingRid) {
+        console.error('Found record with missing rid:', missingRid);
+      }
+      console.log('Total items:', eif.items.length);
+      console.log('Items with rid:', eif.items.filter((item: any) => item.rid).length);
+      
+      // Use eolib's built-in serializer
+      Eif.serialize(writer, eif);
+      
+      return writer.toByteArray();
+    } catch (error: any) {
+      console.error('Failed to serialize EIF data:', error);
+      throw new Error(`Failed to serialize EIF: ${error.message}`);
     }
-    
-    return writer.toByteArray();
   }
 }
 
-// ES6 exports
-export { EIFParser, EIFRecord };
+export { EIFParser };

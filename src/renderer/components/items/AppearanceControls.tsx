@@ -2,6 +2,31 @@ import React, { useState } from 'react';
 import HairstyleSelector from './HairstyleSelector';
 import SkinSelector from './SkinSelector';
 
+interface AppearancePreset {
+  name: string;
+  gender: number;
+  hairStyle: number;
+  hairColor: number;
+  skinTone: number;
+}
+
+interface AppearanceControlsProps {
+  gender: number;
+  setGender: (gender: number) => void;
+  hairStyle: number;
+  setHairStyle: (style: number) => void;
+  hairColor: number;
+  setHairColor: (color: number) => void;
+  skinTone: number;
+  setSkinTone: (tone: number) => void;
+  gfxFolder: string;
+  loadGfx: (gfxNumber: number, resourceId?: number) => Promise<string | null>;
+  presets: AppearancePreset[];
+  onSavePreset: (name: string) => void;
+  onLoadPreset: (preset: AppearancePreset) => void;
+  onDeletePreset: (name: string) => void;
+}
+
 // Hair color palette (0-indexed)
 const HAIR_COLORS = [
   { id: 0, name: 'Brown', hex: '#8B4513' },
@@ -31,7 +56,7 @@ export default function AppearanceControls({
   onSavePreset,
   onLoadPreset,
   onDeletePreset
-}) {
+}: AppearanceControlsProps) {
   const [presetName, setPresetName] = useState('');
   const [showPresets, setShowPresets] = useState(false);
 
@@ -146,17 +171,17 @@ export default function AppearanceControls({
             {presets.length > 0 ? (
               <ul className="presets-list">
                 {presets.map(preset => (
-                  <li key={preset.id} className="preset-item">
+                  <li key={preset.name} className="preset-item">
                     <span className="preset-name">{preset.name}</span>
                     <div className="preset-actions">
                       <button
-                        onClick={() => onLoadPreset(preset.id)}
+                        onClick={() => onLoadPreset(preset)}
                         className="btn btn-small btn-primary"
                       >
                         Load
                       </button>
                       <button
-                        onClick={() => onDeletePreset(preset.id)}
+                        onClick={() => onDeletePreset(preset.name)}
                         className="btn btn-small btn-danger"
                       >
                         ×

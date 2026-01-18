@@ -1,7 +1,38 @@
 import React from 'react';
-import { EQUIPMENT_SLOTS } from '../hooks/useEquipment';
+import { EQUIPMENT_SLOTS } from '../../hooks/useEquipment';
 import ItemPreview from './ItemPreview';
-import Tooltip from './Tooltip';
+import Tooltip from '../Tooltip';
+
+interface Item {
+  id: number;
+  name: string;
+  graphic: number;
+  type: number;
+  gender?: number;
+  [key: string]: any;
+}
+
+interface EquipmentSlotProps {
+  slotKey: string;
+  item: Item | null;
+  onUnequip: (slotKey: string) => void;
+  onDrop: (itemId: number, slotKey: string) => void;
+  onAutoGenderSwitch: (itemGender: number) => void;
+  items: Record<number, Item>;
+  loadGfx: (gfxNumber: number, resourceId?: number) => Promise<string | null>;
+  gfxFolder: string;
+}
+
+interface PaperdollSlotsProps {
+  equippedItems: Record<string, Item | null>;
+  onEquipItem: (itemId: number, slotKey: string) => void;
+  onUnequipSlot: (slotKey: string) => void;
+  onClearAll: () => void;
+  items: Record<number, Item>;
+  onAutoGenderSwitch: (itemGender: number) => void;
+  loadGfx: (gfxNumber: number, resourceId?: number) => Promise<string | null>;
+  gfxFolder: string;
+}
 
 const SLOT_DISPLAY_NAMES = {
   [EQUIPMENT_SLOTS.WEAPON]: 'Weapon',
@@ -48,10 +79,10 @@ function EquipmentSlot({
   items,
   loadGfx,
   gfxFolder
-}) {
+}: EquipmentSlotProps) {
   const [dragOver, setDragOver] = React.useState(false);
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
     
@@ -72,7 +103,7 @@ function EquipmentSlot({
     setDragOver(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     
@@ -86,7 +117,7 @@ function EquipmentSlot({
           onAutoGenderSwitch(0); // Switch to female
         }
         
-        onDrop(items[draggedItem.id], slotKey);
+        onDrop(draggedItem.id, slotKey);
       }
     } catch (err) {
       console.error('Error dropping item:', err);
@@ -109,7 +140,7 @@ function EquipmentSlot({
               item={item}
               gfxFolder={gfxFolder}
               loadGfx={loadGfx}
-              size="fill"
+              size="small"
               mode="icon"
             />
             <button 
@@ -137,7 +168,7 @@ export default function PaperdollSlots({
   onAutoGenderSwitch,
   loadGfx,
   gfxFolder
-}) {
+}: PaperdollSlotsProps) {
   return (
     <div className="paperdoll-slots">
       <div className="paperdoll-header">

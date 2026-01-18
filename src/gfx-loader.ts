@@ -124,7 +124,7 @@ class GFXLoader {
 
     try {
       // Root resource directory
-      const numberOfNamedEntries = view.getUint16(baseOffset + 12, true);
+      const _numberOfNamedEntries = view.getUint16(baseOffset + 12, true);
       const numberOfIdEntries = view.getUint16(baseOffset + 14, true);
       
       let entryOffset = baseOffset + 16;
@@ -140,7 +140,7 @@ class GFXLoader {
           const typeDir = baseOffset + (offsetToData & 0x7FFFFFFF);
           
           // Parse name/ID directory
-          const numNamedIds = view.getUint16(typeDir + 12, true);
+          const _numNamedIds = view.getUint16(typeDir + 12, true);
           const numIds = view.getUint16(typeDir + 14, true);
           let idEntryOffset = typeDir + 16;
 
@@ -155,7 +155,7 @@ class GFXLoader {
               const numLangIds = view.getUint16(langDir + 14, true);
               
               if (numLangIds > 0) {
-                let langEntryOffset = langDir + 16;
+                const langEntryOffset = langDir + 16;
                 // Take the first language entry
                 const offsetToDataEntry = view.getUint32(langEntryOffset + 4, true);
                 
@@ -203,21 +203,15 @@ class GFXLoader {
       const bpp = view.getUint16(14, true); // Bits per pixel
       const colorsUsed = view.getUint32(32, true);
       
-      console.log(`Converting DIB: ${width}x${height}, ${bpp}bpp, ${colorsUsed} colors`);
-      
       // For 8-bit palette images, convert to 24-bit RGB
       if (bpp === 8) {
-        console.log('Detected 8-bit palette image, converting to 24-bit RGB...');
         return this.convertPaletteBMPTo24Bit(dibData, width, Math.abs(height), headerSize, colorsUsed);
       }
       
       // For 16-bit images, convert to 24-bit RGB (browsers often don't handle 16-bit correctly)
       if (bpp === 16) {
-        console.log('Detected 16-bit image, converting to 24-bit RGB...');
         return this.convert16BitBMPTo24Bit(dibData, width, Math.abs(height), headerSize);
       }
-      
-      console.log('Not a palette or 16-bit image, using standard conversion');
       
       // Create BMP file header (14 bytes)
       const bmpFileHeader = new Uint8Array(14);
@@ -388,8 +382,6 @@ class GFXLoader {
       const redScale = 255.0 / ((1 << redBits) - 1);
       const greenScale = 255.0 / ((1 << greenBits) - 1);
       const blueScale = 255.0 / ((1 << blueBits) - 1);
-      
-      console.log(`16-bit conversion: masks R=0x${redMask.toString(16)} G=0x${greenMask.toString(16)} B=0x${blueMask.toString(16)}, bits R=${redBits} G=${greenBits} B=${blueBits}`);
       
       // BMP rows are padded to 4-byte boundaries
       const rowSize = Math.floor((width * 2 + 3) / 4) * 4;

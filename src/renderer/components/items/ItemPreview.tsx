@@ -1,13 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+interface Item {
+  id: number;
+  name?: string;
+  graphic: number;
+  type: number;
+  dolGraphic?: number;
+  gender?: number;
+  [key: string]: any;
+}
+
+interface ItemPreviewProps {
+  item: Item;
+  gfxFolder: string;
+  loadGfx: (gfxNumber: number, resourceId?: number) => Promise<string | null>;
+  size?: 'small' | 'medium' | 'large';
+  lazy?: boolean;
+  mode?: 'paperdoll' | 'icon';
+}
+
 export default function ItemPreview({ 
   item, 
-  gfxFolder,
-  loadGfx, // Use cached GFX loading function
-  size = 'medium', // 'small', 'medium', 'large'
-  lazy = false, // Enable lazy loading for list items
-  mode = 'paperdoll' // 'paperdoll' or 'icon'
-}) {
+  gfxFolder: _gfxFolder,
+  loadGfx,
+  size = 'medium',
+  lazy = false,
+  mode = 'paperdoll'
+}: ItemPreviewProps) {
   const [previewImage, setPreviewImage] = useState(null);
   const [isVisible, setIsVisible] = useState(!lazy); // If not lazy, load immediately
   const containerRef = useRef(null);
@@ -104,7 +123,7 @@ export default function ItemPreview({
     }
   };
 
-  const getBaseGraphic = (dolGraphic, type) => {
+  const getBaseGraphic = (dolGraphic, _type) => {
     // Calculate base graphic ID (matches CharacterAnimator logic)
     // Each item has 50 offsets in the GFX file
     return (dolGraphic - 1) * 50;

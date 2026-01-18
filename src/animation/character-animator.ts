@@ -34,7 +34,8 @@ import {
   drawSpell
 } from './renderer';
 
-interface SpriteData {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface _SpriteData {
   image: HTMLImageElement | null;
   width: number;
   height: number;
@@ -330,10 +331,8 @@ class CharacterAnimator {
       return;
     }
     
-    // Clear canvas with background color
+    // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.fillStyle = '#2d2d30';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
@@ -422,11 +421,6 @@ class CharacterAnimator {
         centerY
       );
     }
-    
-    // Debug info
-    this.ctx.fillStyle = '#cccccc';
-    this.ctx.font = '12px monospace';
-    this.ctx.fillText(`State: ${this.state} | Frame: ${this.currentFrame} | Zoom: ${this.zoomLevel}x`, 10, 20);
     
     // Show if no sprites loaded
     if (!this.sprites.skin) {

@@ -1,102 +1,157 @@
-import React, { useState } from 'react';
-import ItemList from './components/ItemList';
-import ItemEditor from './components/ItemEditor';
-import CharacterPreview from './components/CharacterPreview';
-import PaperdollSlots from './components/PaperdollSlots';
-import AppearanceControls from './components/AppearanceControls';
-import LandingScreen from './components/LandingScreen';
+import React, { useState, useCallback, useEffect } from 'react';
+import LandingScreen from './pages/LandingScreen';
+import EditorPage from './pages/EditorPage';
 import { useEIFData } from './hooks/useEIFData';
 import { useGFXCache } from './hooks/useGFXCache';
 import { useEquipment } from './hooks/useEquipment';
 import { useAppearance } from './hooks/useAppearance';
-import FaceIcon from '@mui/icons-material/Face';
-import CheckroomIcon from '@mui/icons-material/Checkroom';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import SettingsIcon from '@mui/icons-material/Settings';
+import { useProject } from './hooks/useProject';
+import { useFileImportExport } from './hooks/useFileImportExport';
+import { ProjectService } from './services/projectService';
 
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
 const App: React.FC = () => {
-  const [gfxFolder, setGfxFolder] = useState(
-    localStorage.getItem('gfxFolder') || ''
-  );
-  const [activeTab, setActiveTab] = useState('appearance');
-  const [rightPanelWidth, setRightPanelWidth] = useState(
-    parseInt(localStorage.getItem('rightPanelWidth') || '400')
-  );
-  const [isResizing, setIsResizing] = useState(false);
-  const [isPanelMinimized, setIsPanelMinimized] = useState(false);
-  const [leftPanelMinimized, setLeftPanelMinimized] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [dropsData, setDropsData] = useState<Map<number, any[]>>(new Map());
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Mark changes as unsaved
+  const markAsUnsaved = useCallback(() => {
+    setHasUnsavedChanges(true);
+  }, []);
   
   const { 
     eifData, 
-    currentFile, 
-    selectedItemId, 
-    setSelectedItemId,
-    loadFile,
-    loadFileFromPath,
-    saveFile,
+    enfData,
+    pubDirectory, 
+    activeTab,
+    setActiveTab,
+    loadDirectory,
     addItem,
     deleteItem,
     duplicateItem,
     updateItem,
+    addNpc,
+    deleteNpc,
+    duplicateNpc,
+    updateNpc,
     setEifData,
-    setCurrentFile
-  } = useEIFData();
+    setEnfData,
+    setPubDirectory
+  } = useEIFData(markAsUnsaved);
 
-  const { loadGfx, saveDirHandle } = useGFXCache(gfxFolder);
+  // Project management hook
+  const {
+    currentProject,
+    dataFolder,
+    gfxFolder,
+    createProject: createProjectHook,
+    selectProject: selectProjectHook,
+    deleteProject: deleteProjectHook,
+    setCurrentProject,
+    setGfxFolder
+  } = useProject();
+
+  const { 
+    loadGfx, 
+    preloadGfxBatch,
+    startBackgroundLoading,
+    isLoadingInBackground,
+    loadingProgress,
+    loadingMessage
+  } = useGFXCache(gfxFolder);
+
+  // File import/export hook
+  const {
+    exportItems,
+    exportNpcs,
+    exportDrops,
+    importItems,
+    importNpcs,
+    importDrops
+  } = useFileImportExport({
+    eifData,
+    enfData,
+    dropsData,
+    dataFolder,
+    currentProject,
+    setEifData,
+    setEnfData,
+    setDropsData
+  });
   
-  const selectGfxFolder = async () => {
+  // Wrapper for createProject hook to update local state
+  const createProject = async (projectName: string, gfxPath: string, eifPath?: string, enfPath?: string, dropsPath?: string) => {
     try {
-      if (!isElectron) {
-        // Browser: Use File System Access API
-        if ('showDirectoryPicker' in window) {
-          const dirHandle = await (window as any).showDirectoryPicker();
-          
-          // Save the handle to IndexedDB for persistence
-          await saveDirHandle(dirHandle);
-          
-          const path = dirHandle.name;
-          setGfxFolder(path);
-          localStorage.setItem('gfxFolder', path);
-          alert(`Selected folder: ${path}\n\nGFX graphics loading is now enabled! The folder will be remembered across sessions.`);
-        } else {
-          alert('Folder selection requires a modern browser (Chrome 86+, Edge 86+). For full functionality, use the Electron app: npm run dev');
-        }
-        return;
+      await createProjectHook(projectName, gfxPath, eifPath, enfPath, dropsPath);
+      
+      // Load the project data into local state
+      const projectData = await selectProjectHook(projectName);
+      if (projectData) {
+        if (projectData.items) setEifData({ version: 1, items: projectData.items });
+        if (projectData.npcs) setEnfData({ version: 1, npcs: projectData.npcs });
+        if (projectData.drops) setDropsData(projectData.drops);
+        setPubDirectory(dataFolder);
       }
       
-      if (!window.electronAPI) {
-        alert('Electron API not available');
-        return;
-      }
+      const importMsg = [];
+      if (eifPath) importMsg.push('Items');
+      if (enfPath) importMsg.push('NPCs');
+      if (dropsPath) importMsg.push('Drops');
+      const imported = importMsg.length > 0 ? `\n\nImported: ${importMsg.join(', ')}` : '';
       
-      const folder = await window.electronAPI.openDirectory();
-      if (folder) {
-        setGfxFolder(folder);
-        localStorage.setItem('gfxFolder', folder);
-      }
+      alert(`Project "${projectName}" created successfully!${imported}`);
     } catch (error) {
-      if (error.name === 'AbortError') {
-        // User cancelled the picker
-        return;
-      }
-      console.error('Error selecting GFX folder:', error);
-      alert('Error selecting GFX folder: ' + error.message);
+      console.error('Error creating project:', error);
+      alert('Error creating project: ' + (error as Error).message);
     }
   };
-  
+
+  // Wrapper for selectProject hook to update local state
+  const selectProject = async (projectName: string) => {
+    try {
+      const projectData = await selectProjectHook(projectName);
+      if (projectData) {
+        ProjectService.restoreProjectState(projectData, {
+          setEifData,
+          setEnfData,
+          setDropsData,
+          restoreEquipment,
+          setGender,
+          setHairStyle,
+          setHairColor,
+          setSkinTone
+        });
+        setPubDirectory(dataFolder);
+      } else {
+        setPubDirectory(dataFolder); // Mark as ready even if empty
+      }
+    } catch (error) {
+      console.error('Error selecting project:', error);
+      alert('Error selecting project: ' + (error as Error).message);
+    }
+  };
+
+  // Start background GFX loading when gfxFolder is set
+  useEffect(() => {
+    if (gfxFolder && !isLoadingInBackground) {
+      console.log('📦 GFX folder set, starting background loading in 500ms...');
+      // Small delay to let UI render first
+      const timer = setTimeout(() => {
+        console.log('🚀 Starting background GFX loading');
+        startBackgroundLoading();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [gfxFolder, startBackgroundLoading, isLoadingInBackground]);
+
   const { 
     equippedItems, 
     equipItem, 
     unequipSlot,
-    clearAll 
+    clearAll,
+    restoreEquipment
   } = useEquipment();
   
   const {
@@ -113,231 +168,205 @@ const App: React.FC = () => {
     loadPreset,
     deletePreset
   } = useAppearance();
-  
-  // Handle resize
-  const handleMouseDown = (e) => {
-    setIsResizing(true);
-    e.preventDefault();
-  };
-  
+
+  // Wrapper for equipItem to match PaperdollSlots signature
+  const handleEquipItemFromId = useCallback((itemId: number, slotKey: string) => {
+    const item = eifData.items[itemId];
+    if (item) {
+      equipItem(item, slotKey);
+    }
+  }, [eifData.items, equipItem]);
+
+  // Update window title with asterisk when there are unsaved changes
   React.useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!isResizing) return;
+    if (isElectron && window.electronAPI && currentProject) {
+      const title = `OakTree - EO Pub Editor - ${currentProject}${hasUnsavedChanges ? ' *' : ''}`;
+      window.electronAPI.setTitle(title);
+    }
+  }, [hasUnsavedChanges, currentProject]);
+
+  const updateNpcDrops = (npcId: number, drops: any[]) => {
+    const newDropsData = new Map(dropsData);
+    if (drops.length === 0) {
+      newDropsData.delete(npcId);
+    } else {
+      newDropsData.set(npcId, drops);
+    }
+    setDropsData(newDropsData);
+    setHasUnsavedChanges(true);
+  };
+
+  const saveDropsFile = async () => {
+    if (!dataFolder || !isElectron || !window.electronAPI) return;
+    
+    try {
+      let content = '# NPC Drop Table Configuration\n';
+      content += '# Format: npc_id = item_id,min,max,percentage, item_id,min,max,percentage, ...\n';
+      content += '# Percentage is 0-100 (supports decimals like 0.5)\n\n';
       
-      const newWidth = window.innerWidth - e.clientX;
-      if (newWidth >= 300 && newWidth <= 800) {
-        setRightPanelWidth(newWidth);
-        localStorage.setItem('rightPanelWidth', newWidth.toString());
+      const sortedNpcIds = Array.from(dropsData.keys()).sort((a, b) => a - b);
+      
+      for (const npcId of sortedNpcIds) {
+        const drops = dropsData.get(npcId);
+        if (!drops || drops.length === 0) continue;
+        
+        const dropStrs = drops.map(d => `${d.itemId},${d.min},${d.max},${d.percentage}`);
+        content += `${npcId} = ${dropStrs.join(', ')}\n`;
+      }
+      
+      const dropsPath = `${dataFolder}/drops.txt`;
+      const result = await window.electronAPI.writeTextFile(dropsPath, content);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      console.log('Drops file saved successfully');
+      return true;
+    } catch (error) {
+      console.error('Error saving drops file:', error);
+      alert('Error saving drops file: ' + error.message);
+      return false;
+    }
+  };
+
+  const saveAllFiles = async () => {
+    if (!dataFolder || !currentProject || !isElectron || !window.electronAPI) return;
+    
+    try {
+      await ProjectService.saveProject({
+        dataFolder,
+        currentProject,
+        eifData,
+        enfData,
+        dropsData,
+        equippedItems,
+        appearance: {
+          gender,
+          hairStyle,
+          hairColor,
+          skinTone
+        }
+      });
+      setHasUnsavedChanges(false);
+      console.log('All files saved successfully!');
+    } catch (error) {
+      console.error('Error saving files:', error);
+      alert('Error saving files: ' + (error as Error).message);
+    }
+  };
+
+  // Add keyboard shortcut for save (Cmd+S on Mac, Ctrl+S on Windows/Linux)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (currentProject) {
+          saveAllFiles();
+        }
       }
     };
-    
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-    
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing]);
 
-  const selectedItem = selectedItemId !== null ? eifData.items[selectedItemId] : null;
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentProject, saveAllFiles]);
 
-  // Wrapper functions for drag and drop
-  const handleLoadEIFFromPath = async (path: string) => {
-    if (isElectron && window.electronAPI) {
-      await loadFileFromPath(path);
-    }
-  };
-
-  const handleSelectGfxFromPath = (path: string) => {
-    setGfxFolder(path);
-    localStorage.setItem('gfxFolder', path);
-  };
-
-  const handleResetFileSelection = () => {
-    // Clear localStorage
-    localStorage.removeItem('lastEifFile');
-    localStorage.removeItem('gfxFolder');
-    
-    // Clear state
+  const returnToProjects = () => {
+    // Clear current project to return to landing screen
+    setCurrentProject('');
     setGfxFolder('');
-    
-    // Clear EIF data (this will also clear currentFile)
+    // Clear data to free memory
     setEifData({ version: 1, items: {} });
-    setCurrentFile(null);
-    setSelectedItemId(null);
+    setEnfData({ version: 1, npcs: {} });
+    setDropsData(new Map());
+    setPubDirectory(null);
     
-    // Force reload to show landing page
-    window.location.reload();
+    // Reset window title
+    if (window.electronAPI) {
+      window.electronAPI.setTitle('OakTree');
+    }
+  };
+
+  // Wrapper for deleteProject hook
+  const deleteProject = async (projectName: string) => {
+    try {
+      await deleteProjectHook(projectName);
+      // If deleting the currently open project, return to projects screen
+      if (projectName === currentProject) {
+        returnToProjects();
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Error deleting project: ' + (error as Error).message);
+    }
   };
 
   // Check if we need to show the landing screen
-  const showLandingScreen = !currentFile || !gfxFolder;
+  const showLandingScreen = !currentProject;
 
-  // If landing screen should be shown, render it
+  // Render landing screen or editor
   if (showLandingScreen) {
     return (
       <LandingScreen
-        onLoadEIFFile={loadFile}
-        onSelectGfxFolder={selectGfxFolder}
-        onLoadEIFFromPath={handleLoadEIFFromPath}
-        onSelectGfxFromPath={handleSelectGfxFromPath}
-        hasEIFFile={!!currentFile}
-        hasGfxFolder={!!gfxFolder}
-        eifFileName={currentFile}
-        gfxFolderPath={gfxFolder}
+        onSelectProject={selectProject}
+        onCreateProject={createProject}
+        onDeleteProject={deleteProject}
+        dataDirectoryPath={dataFolder}
       />
     );
   }
 
   return (
-    <div className="app">
-      <div className="main-content">
-        <div className={`left-panel ${leftPanelMinimized ? 'minimized' : ''}`}>
-          <ItemList
-            items={eifData.items}
-            selectedItemId={selectedItemId}
-            onSelectItem={setSelectedItemId}
-            onAddItem={addItem}
-            onDeleteItem={deleteItem}
-            onDuplicateItem={duplicateItem}
-            onLoadFile={loadFile}
-            onSaveFile={saveFile}
-            currentFile={currentFile}
-            onSelectGfxFolder={selectGfxFolder}
-            gfxFolder={gfxFolder}
-            loadGfx={loadGfx}
-            onEquipItem={equipItem}
-            showSettingsModal={showSettingsModal}
-            setShowSettingsModal={setShowSettingsModal}
-            leftPanelMinimized={leftPanelMinimized}
-            setLeftPanelMinimized={setLeftPanelMinimized}
-            onResetFileSelection={handleResetFileSelection}
-            onLoadEIFFromPath={handleLoadEIFFromPath}
-            onSelectGfxFromPath={handleSelectGfxFromPath}
-          />
-        </div>
-        
-        <div className="center-panel">
-          {selectedItem && (
-            <ItemEditor
-              item={selectedItem}
-              onUpdateItem={updateItem}
-              onDuplicateItem={duplicateItem}
-              loadGfx={loadGfx}
-              gfxFolder={gfxFolder}
-              onSetGfxFolder={setGfxFolder}
-            />
-          )}
-        </div>
-        
-        <div 
-          className={`right-panel ${isResizing ? 'resizing' : ''} ${isPanelMinimized ? 'minimized' : ''}`}
-          style={{ width: isPanelMinimized ? '60px' : `${rightPanelWidth}px` }}
-        >
-          <div className="resize-handle" onMouseDown={handleMouseDown} />
-          
-          <div className="right-panel-content">
-            <div className="right-panel-top">
-              {activeTab === 'appearance' && (
-                <AppearanceControls
-                  gender={gender}
-                  setGender={setGender}
-                  hairStyle={hairStyle}
-                  setHairStyle={setHairStyle}
-                  hairColor={hairColor}
-                  setHairColor={setHairColor}
-                  skinTone={skinTone}
-                  setSkinTone={setSkinTone}
-                  gfxFolder={gfxFolder}
-                  loadGfx={loadGfx}
-                  presets={presets}
-                  onSavePreset={savePreset}
-                  onLoadPreset={loadPreset}
-                  onDeletePreset={deletePreset}
-                />
-              )}
-              
-              {activeTab === 'equipment' && (
-                <PaperdollSlots
-                  equippedItems={equippedItems}
-                  onEquipItem={equipItem}
-                  onUnequipSlot={unequipSlot}
-                  onClearAll={clearAll}
-                  items={eifData.items}
-                  onAutoGenderSwitch={setGender}
-                  loadGfx={loadGfx}
-                  gfxFolder={gfxFolder}
-                />
-              )}
-            </div>
-            
-            {showPreview && (
-            <div className="right-panel-bottom">
-              <CharacterPreview
-                equippedItems={equippedItems}
-                gender={gender}
-                hairStyle={hairStyle}
-                hairColor={hairColor}
-                skinTone={skinTone}
-                loadGfx={loadGfx}
-                gfxFolder={gfxFolder}
-                items={eifData.items}
-              />
-            </div>
-            )}
-          </div>
-          
-          <div className="vertical-sidebar">
-            <button
-              className={`sidebar-button ${activeTab === 'appearance' ? 'active' : ''}`}
-              onClick={() => {
-                if (activeTab === 'appearance' && !isPanelMinimized) {
-                  setIsPanelMinimized(true);
-                } else {
-                  setActiveTab('appearance');
-                  setIsPanelMinimized(false);
-                }
-              }}
-              title="Appearance"
-            >
-              <FaceIcon />
-              <span className="sidebar-label">Appearance</span>
-            </button>
-            <button
-              className={`sidebar-button ${activeTab === 'equipment' ? 'active' : ''}`}
-              onClick={() => {
-                if (activeTab === 'equipment' && !isPanelMinimized) {
-                  setIsPanelMinimized(true);
-                } else {
-                  setActiveTab('equipment');
-                  setIsPanelMinimized(false);
-                }
-              }}
-              title="Equipment"
-            >
-              <CheckroomIcon />
-              <span className="sidebar-label">Equipment</span>
-            </button>
-            <div className="sidebar-spacer"></div>
-            <button
-              className={`sidebar-button ${showPreview ? 'active' : ''}`}
-              onClick={() => setShowPreview(!showPreview)}
-              title="Toggle Preview"
-            >
-              <VisibilityIcon />
-              <span className="sidebar-label">Preview</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <EditorPage
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      eifData={eifData}
+      enfData={enfData}
+      dropsData={dropsData}
+      pubDirectory={pubDirectory}
+      addItem={addItem}
+      deleteItem={deleteItem}
+      duplicateItem={duplicateItem}
+      updateItem={updateItem}
+      addNpc={addNpc}
+      deleteNpc={deleteNpc}
+      duplicateNpc={duplicateNpc}
+      updateNpc={updateNpc}
+      updateNpcDrops={updateNpcDrops}
+      saveDropsFile={saveDropsFile}
+      equippedItems={equippedItems}
+      equipItem={equipItem}
+      unequipSlot={unequipSlot}
+      clearAll={clearAll}
+      gender={gender}
+      setGender={setGender}
+      hairStyle={hairStyle}
+      setHairStyle={setHairStyle}
+      hairColor={hairColor}
+      setHairColor={setHairColor}
+      skinTone={skinTone}
+      setSkinTone={setSkinTone}
+      presets={presets}
+      savePreset={savePreset}
+      loadPreset={loadPreset}
+      deletePreset={deletePreset}
+      gfxFolder={gfxFolder}
+      setGfxFolder={setGfxFolder}
+      loadGfx={loadGfx}
+      preloadGfxBatch={preloadGfxBatch}
+      isLoadingInBackground={isLoadingInBackground}
+      loadingProgress={loadingProgress}
+      loadingMessage={loadingMessage}
+      saveAllFiles={saveAllFiles}
+      returnToProjects={returnToProjects}
+      importItems={importItems}
+      importNpcs={importNpcs}
+      importDrops={importDrops}
+      exportItems={exportItems}
+      exportNpcs={exportNpcs}
+      exportDrops={exportDrops}
+      loadDirectory={loadDirectory}
+    />
   );
 }
 

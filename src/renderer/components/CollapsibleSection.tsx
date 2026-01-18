@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 
+interface CollapsibleSectionProps {
+  title: string;
+  children: React.ReactNode;
+  defaultCollapsed?: boolean;
+  className?: string;
+}
+
 export default function CollapsibleSection({ 
   title, 
   children, 
   defaultCollapsed = false,
   className = ''
-}) {
+}: CollapsibleSectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
   return (

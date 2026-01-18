@@ -13,7 +13,8 @@
     "src/main.ts",
     "src/preload.ts",
     "src/gfx-loader.ts",
-    "src/eif-parser.ts"
+    "src/eif-parser.ts",
+    "src/bmp-converter.ts"
   ],
   "exclude": [
     "node_modules",

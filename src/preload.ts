@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -9,9 +10,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File operations
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
   writeFile: (filePath, data) => ipcRenderer.invoke('file:write', filePath, data),
+  readTextFile: (filePath) => ipcRenderer.invoke('file:readText', filePath),
+  writeTextFile: (filePath, text) => ipcRenderer.invoke('file:writeText', filePath, text),
   readGFX: (gfxPath, gfxNumber) => ipcRenderer.invoke('file:readGFX', gfxPath, gfxNumber),
   listGFXFiles: (gfxPath) => ipcRenderer.invoke('file:listGFXFiles', gfxPath),
+  preloadAllGFX: (gfxPath) => ipcRenderer.invoke('file:preloadAllGFX', gfxPath),
+  onGFXLoadProgress: (callback) => {
+    const subscription = (event, data) => callback(data);
+    ipcRenderer.on('gfx:loadProgress', subscription);
+    return () => ipcRenderer.removeListener('gfx:loadProgress', subscription);
+  },
   joinPath: (...paths) => ipcRenderer.invoke('path:join', ...paths),
+  getHomeDir: () => ipcRenderer.invoke('path:getHomeDir'),
+  getCwd: () => ipcRenderer.invoke('path:getCwd'),
+  setTitle: (title: string) => ipcRenderer.invoke('window:setTitle', title),
   fileExists: (filePath) => ipcRenderer.invoke('file:exists', filePath),
-  isDirectory: (filePath) => ipcRenderer.invoke('file:isDirectory', filePath)
+  isDirectory: (filePath) => ipcRenderer.invoke('file:isDirectory', filePath),
+  ensureDir: (dirPath) => ipcRenderer.invoke('file:ensureDir', dirPath),
+  listDirectories: (dirPath) => ipcRenderer.invoke('file:listDirectories', dirPath),
+  deleteDirectory: (dirPath) => ipcRenderer.invoke('file:deleteDirectory', dirPath),
+  convertBitmapToPNG: (bitmapData) => ipcRenderer.invoke('file:convertBitmapToPNG', bitmapData)
 });

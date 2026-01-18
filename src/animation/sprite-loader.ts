@@ -13,7 +13,8 @@ import {
   getBaseHatGraphic
 } from './constants';
 
-interface SpriteData {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface _SpriteData {
   image: HTMLImageElement | null;
   width: number;
   height: number;
@@ -91,51 +92,25 @@ export function createImageFromData(bitmapData: Uint8Array | null): Promise<HTML
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
       
+      const pixelStart = performance.now();
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
       
-      // DEBUG: Check what pixel values we actually have
-      let pixelTypes = { black: 0, magenta: 0, other: 0 };
-      let sampleOther = [];
+      // Make black pixels transparent - optimized for performance
+      const dataLength = data.length;
       
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        
-        if (r === 0 && g === 0 && b === 0) {
-          pixelTypes.black++;
-        } else if (r === 255 && g === 0 && b === 255) {
-          pixelTypes.magenta++;
-        } else {
-          pixelTypes.other++;
-          if (sampleOther.length < 3) {
-            sampleOther.push(`RGB(${r},${g},${b})`);
-          }
+      for (let i = 0; i < dataLength; i += 4) {
+        // Make pure black pixels transparent
+        if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0) {
+          data[i + 3] = 0;
         }
       }
-      
-      console.log(`Pixel analysis: ${pixelTypes.black} black, ${pixelTypes.magenta} magenta, ${pixelTypes.other} other`, sampleOther);
-      
-      // Make black pixels transparent
-      let transparentCount = 0;
-      let opaqueCount = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        
-        if (r === 0 && g === 0 && b === 0) {
-          data[i + 3] = 0; // Set alpha to 0
-          transparentCount++;
-        } else if (data[i + 3] > 0) {
-          opaqueCount++;
-        }
-      }
-      
-      console.log(`Image processed: ${opaqueCount} opaque pixels, ${transparentCount} black pixels made transparent`);
       
       ctx.putImageData(imageData, 0, 0);
+      const pixelTime = performance.now() - pixelStart;
+      if (pixelTime > 100) {
+        console.warn(`🐌 Slow pixel processing: ${canvas.width}x${canvas.height} (${dataLength / 4} pixels) took ${pixelTime.toFixed(1)}ms`);
+      }
       
       // Create new image from processed canvas
       const processedImg = new Image();
@@ -151,7 +126,7 @@ export function createImageFromData(bitmapData: Uint8Array | null): Promise<HTML
 /**
  * Load skin sprite sheets from GFX008
  */
-export async function loadSkinSprites(gfxData: Uint8Array | null, skinTone: number = 0): Promise<SkinSpriteSet> {
+export async function loadSkinSprites(gfxData: Uint8Array | null, _skinTone: number = 0): Promise<SkinSpriteSet> {
   const sprites: SkinSpriteSet = {};
   
   // Skin sprites in GFX008 are stored as sprite sheets where each sheet contains

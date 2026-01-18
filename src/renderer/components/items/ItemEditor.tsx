@@ -1,5 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import ItemPreview from './ItemPreview';
+
+interface Item {
+  id: number;
+  name: string;
+  graphic: number;
+  type: number;
+  dolGraphic?: number;
+  hp?: number;
+  tp?: number;
+  minDamage?: number;
+  maxDamage?: number;
+  gender?: number;
+  levelReq?: number;
+  strReq?: number;
+  weight?: number;
+  size?: number;
+  [key: string]: any;
+}
+
+interface ItemEditorProps {
+  item: Item;
+  onUpdateItem: (id: number, updates: Partial<Item>) => void;
+  onDuplicateItem: (id: number) => void;
+  loadGfx: (gfxNumber: number, resourceId?: number) => Promise<string | null>;
+  gfxFolder: string;
+  onSetGfxFolder: (folder: string) => void;
+  onEquipItem?: (item: Item) => void;
+}
 
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && window.electronAPI;
@@ -13,14 +40,20 @@ const ITEM_TYPES = {
   23: 'EffectPotion', 24: 'HairDye', 25: 'CureCurse'
 };
 
+const ITEM_SIZES = {
+  0: '1x1', 1: '1x2', 2: '1x3', 3: '1x4',
+  4: '2x1', 5: '2x2', 6: '2x3', 7: '2x4'
+};
+
 export default function ItemEditor({ 
   item, 
   onUpdateItem,
   onDuplicateItem,
   loadGfx,
   gfxFolder,
-  onSetGfxFolder
-}) {
+  onSetGfxFolder,
+  onEquipItem
+}: ItemEditorProps) {
   const [previewImage, setPreviewImage] = useState(null);
   const [dropPreviewImage, setDropPreviewImage] = useState(null);
   const [amount, setAmount] = useState(1); // For money preview
@@ -103,6 +136,14 @@ export default function ItemEditor({
           >
             Duplicate
           </button>
+          <button 
+            onClick={() => onEquipItem?.(item)}
+            className="btn btn-secondary"
+            title={item.type >= 10 && item.type <= 21 ? "Equip this item" : "This item cannot be equipped"}
+            disabled={!onEquipItem || item.type < 10 || item.type > 21}
+          >
+            Equip
+          </button>
           {!gfxFolder && (
             <button onClick={handleGFXFolderSelect} className="btn btn-secondary">
               Set GFX Folder
@@ -147,6 +188,28 @@ export default function ItemEditor({
             </select>
           </div>
 
+          <div className="form-group">
+            <label>Sub Type</label>
+            <input
+              type="number"
+              value={item.subType || 0}
+              onChange={(e) => handleInputChange('subType', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Special</label>
+            <input
+              type="number"
+              value={item.special || 0}
+              onChange={(e) => handleInputChange('special', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
           {/* Stats */}
           <div className="form-group">
             <label>HP</label>
@@ -155,6 +218,7 @@ export default function ItemEditor({
               value={item.hp || 0}
               onChange={(e) => handleInputChange('hp', parseInt(e.target.value) || 0)}
               className="form-input"
+              style={{ width: '100px' }}
             />
           </div>
 
@@ -165,6 +229,7 @@ export default function ItemEditor({
               value={item.tp || 0}
               onChange={(e) => handleInputChange('tp', parseInt(e.target.value) || 0)}
               className="form-input"
+              style={{ width: '100px' }}
             />
           </div>
 
@@ -175,6 +240,7 @@ export default function ItemEditor({
               value={item.minDamage || 0}
               onChange={(e) => handleInputChange('minDamage', parseInt(e.target.value) || 0)}
               className="form-input"
+              style={{ width: '100px' }}
             />
           </div>
 
@@ -185,6 +251,107 @@ export default function ItemEditor({
               value={item.maxDamage || 0}
               onChange={(e) => handleInputChange('maxDamage', parseInt(e.target.value) || 0)}
               className="form-input"
+              style={{ width: '100px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Accuracy</label>
+            <input
+              type="number"
+              value={item.accuracy || 0}
+              onChange={(e) => handleInputChange('accuracy', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Evade</label>
+            <input
+              type="number"
+              value={item.evade || 0}
+              onChange={(e) => handleInputChange('evade', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Armor</label>
+            <input
+              type="number"
+              value={item.armor || 0}
+              onChange={(e) => handleInputChange('armor', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          {/* Stat Bonuses */}
+          <div className="form-group">
+            <label>STR</label>
+            <input
+              type="number"
+              value={item.str || 0}
+              onChange={(e) => handleInputChange('str', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>INT</label>
+            <input
+              type="number"
+              value={item.int || 0}
+              onChange={(e) => handleInputChange('int', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>WIS</label>
+            <input
+              type="number"
+              value={item.wis || 0}
+              onChange={(e) => handleInputChange('wis', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>AGI</label>
+            <input
+              type="number"
+              value={item.agi || 0}
+              onChange={(e) => handleInputChange('agi', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>CON</label>
+            <input
+              type="number"
+              value={item.con || 0}
+              onChange={(e) => handleInputChange('con', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>CHA</label>
+            <input
+              type="number"
+              value={item.cha || 0}
+              onChange={(e) => handleInputChange('cha', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
             />
           </div>
 
@@ -196,16 +363,20 @@ export default function ItemEditor({
               value={item.dolGraphic || 0}
               onChange={(e) => handleInputChange('dolGraphic', parseInt(e.target.value) || 0)}
               className="form-input"
+              style={{ width: '100px' }}
             />
           </div>
 
           <div className="form-group">
             <label>Gender</label>
             <select
-              value={item.gender || 0}
+              value={item.gender ?? 2}
               onChange={(e) => handleInputChange('gender', parseInt(e.target.value))}
               className="form-select"
+              disabled={item.type < 10 || item.type > 21}
+              title={item.type < 10 || item.type > 21 ? "Gender only applies to equippable items" : ""}
             >
+              <option value="2">No Gender</option>
               <option value="0">Female</option>
               <option value="1">Male</option>
             </select>
@@ -219,16 +390,84 @@ export default function ItemEditor({
               value={item.levelReq || 0}
               onChange={(e) => handleInputChange('levelReq', parseInt(e.target.value) || 0)}
               className="form-input"
+              style={{ width: '80px' }}
             />
           </div>
 
           <div className="form-group">
-            <label>Str Req</label>
+            <label>Class Req</label>
+            <input
+              type="number"
+              value={item.classReq || 0}
+              onChange={(e) => handleInputChange('classReq', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>STR Req</label>
             <input
               type="number"
               value={item.strReq || 0}
               onChange={(e) => handleInputChange('strReq', parseInt(e.target.value) || 0)}
               className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>INT Req</label>
+            <input
+              type="number"
+              value={item.intReq || 0}
+              onChange={(e) => handleInputChange('intReq', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>WIS Req</label>
+            <input
+              type="number"
+              value={item.wisReq || 0}
+              onChange={(e) => handleInputChange('wisReq', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>AGI Req</label>
+            <input
+              type="number"
+              value={item.agiReq || 0}
+              onChange={(e) => handleInputChange('agiReq', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>CON Req</label>
+            <input
+              type="number"
+              value={item.conReq || 0}
+              onChange={(e) => handleInputChange('conReq', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>CHA Req</label>
+            <input
+              type="number"
+              value={item.chaReq || 0}
+              onChange={(e) => handleInputChange('chaReq', parseInt(e.target.value) || 0)}
+              className="form-input"
+              style={{ width: '80px' }}
             />
           </div>
 
@@ -239,7 +478,24 @@ export default function ItemEditor({
               value={item.weight || 0}
               onChange={(e) => handleInputChange('weight', parseInt(e.target.value) || 0)}
               className="form-input"
+              style={{ width: '80px' }}
             />
+          </div>
+
+          <div className="form-group">
+            <label>Size</label>
+            <select
+              value={item.size || 0}
+              onChange={(e) => handleInputChange('size', parseInt(e.target.value))}
+              className="form-input"
+              style={{ width: '100px' }}
+            >
+              {Object.entries(ITEM_SIZES).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

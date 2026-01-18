@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { GFXLoader } from '../../gfx-loader';
-import { loadGFXFile, createImageFromData } from '../../animation/sprite-loader';
+
+interface SkinSelectorProps {
+  gender: number;
+  hairStyle: number;
+  hairColor: number;
+  skinTone: number;
+  setSkinTone: (tone: number) => void;
+  gfxFolder: string;
+  loadGfx: (gfxNumber: number, resourceId?: number) => Promise<string | null>;
+}
 
 const SKIN_TONES = [
   { id: 0, name: 'White' },
@@ -11,8 +19,8 @@ const SKIN_TONES = [
   { id: 5, name: 'Panda' }
 ];
 
-export default function SkinSelector({ gender, hairStyle, hairColor, skinTone, setSkinTone, gfxFolder, loadGfx }) {
-  const [skinPreviews, setSkinPreviews] = useState({});
+export default function SkinSelector({ gender, hairStyle, hairColor, skinTone, setSkinTone, gfxFolder, loadGfx }: SkinSelectorProps) {
+  const [skinPreviews, setSkinPreviews] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -63,6 +71,7 @@ export default function SkinSelector({ gender, hairStyle, hairColor, skinTone, s
           canvas.width = 80;
           canvas.height = 80;
           const ctx = canvas.getContext('2d');
+          if (!ctx) continue;
 
           // Draw transparent or dark background
           ctx.fillStyle = '#2d2d30';
@@ -99,6 +108,7 @@ export default function SkinSelector({ gender, hairStyle, hairColor, skinTone, s
           tempCanvas.width = frameWidth;
           tempCanvas.height = cropHeight;
           const tempCtx = tempCanvas.getContext('2d');
+          if (!tempCtx) continue;
           
           tempCtx.drawImage(
             standingImage,
