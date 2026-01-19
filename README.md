@@ -1,40 +1,97 @@
-# EO Pub Editor
+# OakTree - EO Pub Editor
 
 A cross-platform visual editor for Endless Online pub files and GFX graphics, built with Electron.
 
-![OakTree Demo](recording.gif)
+## ✨ Features Overview
 
-## Features
+### 📝 Multi-File Editor
+Edit multiple pub file types simultaneously:
+- **Items** (.eif) - Equipment, consumables, weapons
+- **NPCs** (.enf) - Monsters and NPCs
+- **Classes** (.ecf) - Character classes
+- **Skills** (.esf) - Spells and abilities
+- **Quests** (.eqf) - Quest chains with visual editor
+- **Equipment** - Manage class equipment sets
+- **Drops** - Monster drop tables
+- **Inns** - Inn respawn locations
 
-- **Load and Save EIF Files**: Open and edit Endless Online item files (.eif)
-- **Visual Editor**: Edit all item properties including stats, requirements, and metadata
-- **GFX Preview**: Visual preview of item graphics from GFX files
-  - **Static Mode**: Shows the item's inventory graphic
-  - **Animated Mode**: Shows animated character preview with equipment (walking/attacking animations)
-- **Add/Remove/Duplicate Items**: Full CRUD operations for items
-- **Search and Filter**: Quickly find items by name or ID
-- **Cross-Platform**: Works on Windows, macOS, and Linux
+### 🎨 Visual Features
+- **GFX Preview** - Live preview of item/NPC graphics
+- **Animated Character Preview** - See equipment on animated characters (walking/attacking)
+- **Quest Editor** - Visual node-based quest chain editor
+- **Theme Support** - Light/Dark mode
+- **Resizable Panels** - Customize your workspace
 
-## Installation
+### 🔧 Editor Features
+- **Search & Filter** - Quickly find items by name or ID
+- **Add/Remove/Duplicate** - Full CRUD operations
+- **Validation** - Real-time validation of data
+- **Undo/Redo** - Track changes (via git integration)
 
-1. Install dependencies:
+### 📦 Project Management
+- **Project System** - Organize all pub files in one project
+- **Import/Export** - Individual file operations
+- **Auto-save** - Changes saved automatically
+- **Git Integration** - Built-in version control
+
+## 🎬 Feature Demos
+
+### Theme Switching
+Switch between light and dark modes for comfortable editing in any environment.
+
+![Theme Switching](recordings/light-dark-mode.gif)
+
+### Quest Editor
+Visual node-based editor for creating complex quest chains with states, rules, and actions.
+
+![Quest Editor](recordings/quest-editor.gif)
+
+### Tab Management
+Reorder tabs by dragging, and minimize side panels for more workspace.
+
+![Tab Reordering](recordings/reorder-tabs.gif)
+
+### Git Integration
+Built-in version control with staging, commits, branches, and remote operations.
+
+![Git Features](recordings/git.gif)
+
+### Workspace Customization
+Minimize left/right panels to maximize your editing space.
+
+![Minimize Menus](recordings/minimize-menus.gif)
+
+## 🚀 Installation
+
+### Prerequisites
+- Node.js 16+ and npm
+
+### Quick Start
+
+1. **Clone the repository**:
+```bash
+git clone https://github.com/yourusername/oaktree.git
+cd oaktree
+```
+
+2. **Install dependencies**:
 ```bash
 npm install
 ```
 
-2. Run the application:
+3. **Run the application**:
 ```bash
 npm start
 ```
 
-## Development
+## 🛠️ Development
 
-Run in development mode with DevTools open:
+Run in development mode with hot reload and DevTools:
 ```bash
 npm run dev
 ```
 
-## Building
+## 📦 Building
 
 Build for your current platform:
 ```bash
@@ -48,21 +105,74 @@ npm run build:mac    # macOS
 npm run build:linux  # Linux
 ```
 
-## Usage
+## 📖 Usage Guide
 
-1. **Open an EIF file**: Click "Open EIF File" and select your item file (e.g., `dat001.eif`)
-2. **Set GFX folder**: Click "Set GFX Folder" and select the folder containing GFX files (e.g., `gfx/`)
-3. **Edit items**: Click on any item in the list to edit its properties
-4. **Preview graphics**: 
-   - Use the **Static/Animated** toggle buttons in the preview panel
-   - **Static mode**: Shows the item's inventory graphic
-   - **Animated mode**: Shows a character wearing/wielding the item with animations:
-     - **Armor items**: Male character with walking animation
-     - **Weapon items**: Male character with attacking animation
-     - **Shield/Back items**: Male character with attacking animation
-5. **Save changes**: Click "Save EIF File" to save your modifications
+### Getting Started
 
-## File Format Information
+1. **Create a New Project**
+   - Click "New Project" on the landing screen
+   - Choose a project name and location
+   - Import your existing pub files (optional)
+
+2. **Open an Existing Project**
+   - Click "Open Project"
+   - Select your project's `.oaktree` folder
+
+### Working with Files
+
+1. **Items Editor**
+   - View and edit item properties (stats, requirements, metadata)
+   - Preview item graphics in static or animated mode
+   - Add, duplicate, or remove items
+
+2. **Quest Editor**
+   - Create quest chains with visual nodes
+   - Define states, rules, and actions
+   - Link quests together
+
+3. **NPC/Class/Skills Editors**
+   - Edit NPC stats and graphics
+   - Configure character classes
+   - Manage spells and abilities
+
+### Version Control (Git)
+
+1. **Initialize Repository**
+   - Click the Git icon in the left sidebar
+   - Click "Initialize Repository" for version control
+
+2. **Making Commits**
+   - Stage changed files
+   - Write a commit message
+   - Click "Commit"
+
+3. **Branch Management**
+   - Click the branch dropdown to create/switch branches
+   - Delete unused branches
+
+4. **Remote Operations**
+   - Go to Settings tab
+   - Add a remote repository URL
+   - Use Push/Pull buttons in the header
+
+### Tips & Shortcuts
+
+- **Drag tabs** to reorder them
+- **Toggle side panels** with the `<` and `>` buttons
+- **Use filters** to quickly find items
+- **Theme switching** via the theme icon in the left sidebar
+- **Stash changes** when switching between different work
+
+## 📚 Documentation
+
+For more detailed information:
+- **[Animation System](ANIMATION_SYSTEM.md)** - Character animation architecture
+- **[GFX File Reference](GFX_FILE_REFERENCE.md)** - GFX file format and resource IDs
+- **[Git Integration](GIT_INTEGRATION.md)** - Version control features
+- **[Project Specification](PROJECT_SPECIFICATION.md)** - Technical specifications
+- **[Quick Start Guide](QUICKSTART.md)** - Getting started tutorial
+
+## 🗂️ File Format Information
 
 ### EIF Files
 EIF (Endless Item File) files store item data including:
@@ -82,36 +192,32 @@ GFX files (`.egf`) are PE (Portable Executable) format files containing embedded
 
 **Character Animation Graphics**:
 - `gfx008.egf`: Skin sprites (standing, walking, attacking)
-- `gfx011.egf`: Male boots sprites
-- `gfx012.egf`: Female boots sprites
-- `gfx013.egf`: Male armor sprites
-- `gfx014.egf`: Female armor sprites
-- `gfx015.egf`: Male hat/helmet sprites
-- `gfx016.egf`: Female hat/helmet sprites
-- `gfx017.egf`: Male weapon sprites
-- `gfx018.egf`: Female weapon sprites
-- `gfx019.egf`: Male back/shield items
-- `gfx020.egf`: Female back/shield items
+- `gfx011-012.egf`: Boots sprites (male/female)
+- `gfx013-014.egf`: Armor sprites (male/female)
+- `gfx015-016.egf`: Hat/helmet sprites (male/female)
+- `gfx017-018.egf`: Weapon sprites (male/female)
+- `gfx019-020.egf`: Back/shield items (male/female)
 
-## Animation System
+See [GFX_FILE_REFERENCE.md](GFX_FILE_REFERENCE.md) for complete details.
 
-The character animation system is a modular architecture that renders equipment on animated character sprites. It's organized into several focused modules:
+## 🎯 Technical Details
 
-### Module Overview
+### Architecture
 
-- **character-animator.js**: Main orchestrator that manages state and coordinates loading/rendering
-- **constants.js**: Core enums (Gender, CharacterFrame, ItemType) and GFX file mappings
-- **offsets.js**: Equipment positioning tables for proper alignment across all character poses
-- **sprite-loader.js**: Handles loading sprites from GFX files and bitmap processing
-- **renderer.js**: Canvas drawing functions for different animation states
+**Frontend**: React 18 with TypeScript
+**Backend**: Electron (Node.js)
+**Build**: Vite + electron-builder
+**Styling**: Custom CSS with theme variables
 
-### Key Features
+### Character Animation System
 
-- **Multi-layered Rendering**: Sprites are drawn in proper Z-order (back items → skin → boots → armor → weapon → shield → hair → helmet)
-- **Frame-based Animation**: Walking (4 frames), attacking (2 frames), and standing poses
-- **Gender Support**: Separate sprites and offsets for male and female characters
-- **Equipment Offsets**: Precise pixel offsets ensure equipment aligns with character body in every pose
-- **Zoom Support**: 1x-4x zoom with pixel-perfect scaling
+Multi-layered rendering system with:
+- **Z-order layering**: Back items → skin → boots → armor → weapon → shield → hair → helmet
+- **Frame-based animation**: Walking (4 frames), attacking (2 frames), standing poses
+- **Gender support**: Separate sprites and offsets for male/female characters
+- **Zoom support**: 1x-4x zoom with pixel-perfect scaling
+
+See [ANIMATION_SYSTEM.md](ANIMATION_SYSTEM.md) for architecture details.
 
 For detailed information about the animation system, see [ANIMATION_SYSTEM.md](ANIMATION_SYSTEM.md).
 
@@ -141,26 +247,28 @@ eo-pub-editor/
 ## Technical Details
 
 ### Number Encoding
-EO files use a custom number encoding scheme where:
+EO files use a custom number encoding scheme:
 - 254 represents 1
 - 0 represents 254
 - Numbers are encoded in base-253
 
-### Item Properties
-Items have 58 bytes of property data stored in a specific format. The parser handles:
-- Multi-byte integers (2-3 bytes)
-- Single-byte values
-- Proper offset calculations
-- CRC32 checksums
+## 🤝 Contributing
 
-## Contributing
+Contributions are welcome! Please feel free to:
+- Report bugs via GitHub Issues
+- Suggest features or improvements
+- Submit pull requests
 
-Feel free to open issues or submit pull requests for improvements!
+## 📄 License
 
-## License
+MIT License - see LICENSE file for details
 
-MIT
+## 🙏 Credits
 
-## Credits
+- File format specifications from [EndlessClient](https://github.com/ethanmoffat/EndlessClient)
+- Built with [Electron](https://www.electronjs.org/) and [React](https://react.dev/)
+- Icons from [game-icons.net](https://game-icons.net/) (CC BY 3.0)
 
-Based on the file format specifications from [EndlessClient](https://github.com/ethanmoffat/EndlessClient).
+---
+
+**OakTree** - A modern, feature-rich editor for Endless Online content creation
