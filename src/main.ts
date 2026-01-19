@@ -393,3 +393,27 @@ ipcMain.handle('file:convertBitmapToPNG', async (event, bitmapData) => {
     return { success: false, error: error.message };
   }
 });
+
+// Execute shell command
+ipcMain.handle('shell:runCommand', async (event, command) => {
+  const { exec } = require('child_process');
+  const util = require('util');
+  const execPromise = util.promisify(exec);
+  
+  try {
+    const { stdout, stderr } = await execPromise(command, {
+      maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+    });
+    return { 
+      stdout: stdout || '', 
+      stderr: stderr || '', 
+      exitCode: 0 
+    };
+  } catch (error) {
+    return { 
+      stdout: error.stdout || '', 
+      stderr: error.stderr || error.message, 
+      exitCode: error.code || 1 
+    };
+  }
+});

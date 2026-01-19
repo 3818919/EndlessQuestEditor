@@ -5,6 +5,7 @@ import ReplyIcon from '@mui/icons-material/Reply';
 import HouseIcon from '@mui/icons-material/House';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
+import GitHubIcon from '@mui/icons-material/GitHub';
 import FileMenu from './FileMenu';
 import { CrossedSwordsIcon, SkullCrossedBonesIcon, SpellBookIcon } from './icons';
 import QuestIcon from './icons/QuestIcon';
@@ -37,6 +38,7 @@ interface VerticalSidebarProps {
   setLeftPanelMinimized: (minimized: boolean) => void;
   theme: 'dark' | 'light';
   toggleTheme: () => void;
+  onGitClick: () => void;
 }
 
 const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
@@ -64,7 +66,8 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   leftPanelMinimized,
   setLeftPanelMinimized,
   theme,
-  toggleTheme
+  toggleTheme,
+  onGitClick
 }) => {
   const [draggingTab, setDraggingTab] = useState<string | null>(null);
 
@@ -75,7 +78,8 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     classes: { title: 'Classes', icon: <CrossedSwordsIcon /> },
     skills: { title: 'Skills / Spells', icon: <SpellBookIcon /> },
     inns: { title: 'Inns / Spawn Points', icon: <HouseIcon /> },
-    quests: { title: 'Quests', icon: <QuestIcon size={24} /> }
+    quests: { title: 'Quests', icon: <QuestIcon size={24} /> },
+    git: { title: 'Version Control', icon: <GitHubIcon /> }
   };
 
   const handleTabClick = (tab: string) => {
@@ -158,6 +162,13 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         />
       ))}
       <div className="sidebar-spacer"></div>
+      <button
+        className="left-sidebar-button"
+        onClick={onGitClick}
+        title="Version Control"
+      >
+        <GitHubIcon />
+      </button>
       <button
         className="left-sidebar-button"
         onClick={toggleTheme}

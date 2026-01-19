@@ -32,5 +32,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listDirectories: (dirPath) => ipcRenderer.invoke('file:listDirectories', dirPath),
   deleteDirectory: (dirPath) => ipcRenderer.invoke('file:deleteDirectory', dirPath),
   renameFile: (oldPath, newPath) => ipcRenderer.invoke('file:rename', oldPath, newPath),
-  convertBitmapToPNG: (bitmapData) => ipcRenderer.invoke('file:convertBitmapToPNG', bitmapData)
+  convertBitmapToPNG: (bitmapData) => ipcRenderer.invoke('file:convertBitmapToPNG', bitmapData),
+  runCommand: (command) => ipcRenderer.invoke('shell:runCommand', command)
 });

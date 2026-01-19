@@ -22,7 +22,7 @@ export function usePubData(onChangeCallback?: () => void) {
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [selectedSkillId, setSelectedSkillId] = useState(null);
   const [selectedInnIndex, setSelectedInnIndex] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests'>('items');
+  const [activeTab, setActiveTab] = useState<'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests' | 'git'>('items');
   const [isInitialized, setIsInitialized] = useState(false);
 
   const loadDirectory = useCallback(async () => {

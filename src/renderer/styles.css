@@ -2467,3 +2467,323 @@ body {
   justify-content: flex-end;
   margin-top: 24px;
 }
+/* Git Page Styles */
+.git-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.git-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.git-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.git-branch {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.git-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.git-tab {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.git-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.git-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+.git-content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.git-split-view {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 16px;
+  height: 100%;
+}
+
+.git-file-list {
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  overflow: auto;
+}
+
+.git-section {
+  margin-bottom: 16px;
+}
+
+.git-section-header {
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-primary);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.file-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.15s;
+}
+
+.file-item:hover {
+  background: var(--bg-hover);
+}
+
+.file-item.selected {
+  background: var(--bg-active);
+  border-left: 2px solid var(--accent-primary);
+}
+
+.file-item-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-item-status {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+.file-item-status.modified {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+}
+
+.file-item-status.added {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+.file-item-status.deleted {
+  background: rgba(220, 53, 69, 0.2);
+  color: #dc3545;
+}
+
+.file-item-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.file-item-btn {
+  padding: 2px 6px;
+  font-size: 11px;
+  border: 1px solid var(--border-primary);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.file-item-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.diff-viewer {
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  height: 100%;
+  overflow: auto;
+}
+
+.diff-viewer pre {
+  margin: 0;
+  padding: 16px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.diff-line-added {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+
+.diff-line-removed {
+  background: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
+}
+
+.commit-form {
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  margin-top: 16px;
+}
+
+.commit-form textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+  margin-bottom: 12px;
+}
+
+.commit-form textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.commit-form button {
+  padding: 8px 16px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--accent-primary);
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.commit-form button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.commit-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.commit-list {
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+}
+
+.commit-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-primary);
+  transition: background 0.15s;
+}
+
+.commit-item:hover {
+  background: var(--bg-hover);
+}
+
+.commit-item:last-child {
+  border-bottom: none;
+}
+
+.commit-hash {
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.commit-message {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.commit-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.git-init-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+}
+
+.git-init-container p {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.git-init-container button {
+  padding: 10px 20px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--accent-primary);
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.git-init-container button:hover {
+  background: var(--accent-hover);
+}
+
+.error-message {
+  padding: 12px;
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: 4px;
+  color: #dc3545;
+  font-size: 13px;
+  margin-bottom: 16px;
+}

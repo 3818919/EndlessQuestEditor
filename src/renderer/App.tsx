@@ -109,8 +109,21 @@ const App: React.FC = () => {
     startBackgroundLoading,
     isLoadingInBackground,
     loadingProgress,
-    loadingMessage
+    loadingMessage,
+    getCacheStats
   } = useGFXCache(gfxFolder);
+
+  // Expose cache stats to window for debugging
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).getGFXCacheStats = getCacheStats;
+      // Also expose sprite cache stats
+      (window as any).getSpriteCacheStats = () => {
+        const { getSpriteCacheStats } = require('../animation/sprite-loader');
+        return getSpriteCacheStats();
+      };
+    }
+  }, [getCacheStats]);
 
   // File import/export hook
   const {

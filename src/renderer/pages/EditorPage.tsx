@@ -21,6 +21,7 @@ import AppearanceControls from '../components/items/AppearanceControls';
 import VerticalSidebar from '../components/VerticalSidebar';
 import StatusBar from '../components/StatusBar';
 import ProjectSettings from '../components/ProjectSettings';
+import GitPage from './GitPage';
 import { useResizablePanel } from '../hooks/useResizablePanel';
 import FaceIcon from '@mui/icons-material/Face';
 import CheckroomIcon from '@mui/icons-material/Checkroom';
@@ -39,8 +40,8 @@ interface EditorPageProps {
   dropsData: Map<number, any[]>;
   questData: Record<number, QuestData>;
   pubDirectory: string | null;
-  activeTab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests';
-  setActiveTab: (tab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests') => void;
+  activeTab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests' | 'git';
+  setActiveTab: (tab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests' | 'git') => void;
   tabOrder: TabType[];
   onTabReorder: (newOrder: TabType[]) => void;
   
@@ -331,10 +332,11 @@ const EditorPage: React.FC<EditorPageProps> = ({
 
   return (
     <div className="app">
+      {activeTab !== 'git' && (
       <VerticalSidebar
         activeTab={activeTab}
         tabOrder={tabOrder}
-        onTabChange={(tab: string) => setActiveTab(tab as 'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests')}
+        onTabChange={(tab: string) => setActiveTab(tab as any)}
         onTabReorder={onTabReorder}
         onSave={saveAllFiles}
         onImportItems={importItems}
@@ -357,8 +359,45 @@ const EditorPage: React.FC<EditorPageProps> = ({
         setLeftPanelMinimized={setLeftPanelMinimized}
         theme={theme}
         toggleTheme={toggleTheme}
+        onGitClick={() => setActiveTab('git')}
       />
+      )}
       
+      {activeTab === 'git' ? (
+        <>
+          <VerticalSidebar
+            activeTab={activeTab}
+            tabOrder={tabOrder}
+            onTabChange={(tab: string) => setActiveTab(tab as any)}
+            onTabReorder={onTabReorder}
+            onSave={saveAllFiles}
+            onImportItems={importItems}
+            onImportNpcs={importNpcs}
+            onImportDrops={importDrops}
+            onImportClasses={importClasses}
+            onImportSkills={importSkills}
+            onImportInns={importInns}
+            onImportQuest={handleImportQuest}
+            onExportNpcs={exportNpcs}
+            onExportItems={exportItems}
+            onExportDrops={exportDrops}
+            onExportClasses={exportClasses}
+            onExportSkills={exportSkills}
+            onExportInns={exportInns}
+            onSettings={() => setShowSettingsModal(true)}
+            onReturnToProjects={returnToProjects}
+            isSaveDisabled={false}
+            leftPanelMinimized={leftPanelMinimized}
+            setLeftPanelMinimized={setLeftPanelMinimized}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            onGitClick={() => setActiveTab('git')}
+          />
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <GitPage currentProject={currentProject} projectName={projectName} />
+          </div>
+        </>
+      ) : (
       <div className="main-content">
         <div className={`left-panel ${leftPanelMinimized ? 'minimized' : ''}`}>
           <div style={{ 
@@ -763,6 +802,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
         </div>
         )}
       </div>
+      )}
       
       <StatusBar 
         isLoading={isLoadingInBackground}

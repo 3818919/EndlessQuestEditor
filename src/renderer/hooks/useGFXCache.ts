@@ -15,10 +15,19 @@ import { GFXLoader } from '../../gfx-loader';
  * - loadGfx(): On-demand loading with caching
  * - Progress tracking with percentage and status messages
  * - Graceful handling of missing files (uses null/placeholder)
+ * 
+ * IMPORTANT: Caches are stored at MODULE LEVEL to persist across component
+ * unmounts/remounts and tab switches. This ensures GFX files stay in memory.
  */
 
 // Check if running in Electron
 const isElectron = typeof window !== 'undefined' && window.electronAPI;
+
+// MODULE-LEVEL CACHES - Persist across all hook instances and component lifecycles
+const gfxFileCache: Record<number, Uint8Array> = {};
+const bitmapCache: Record<string, string> = {};
+const loadingPromises: Record<string, Promise<string | null>> = {};
+let loadQueue: Promise<string | null> = Promise.resolve(null);
 
 // IndexedDB helpers for storing directory handle
 const DB_NAME = 'OakTreeDB';
@@ -61,14 +70,8 @@ async function getDirHandle() {
 }
 
 export function useGFXCache(gfxFolder) {
-  // Cache GFX file data by file number
-  const gfxFileCache = useRef({});
-  // Cache rendered bitmaps by gfxNumber_resourceId
-  const bitmapCache = useRef({});
-  // Store directory handle for browser mode
+  // Store directory handle for browser mode (still needs to be per-instance)
   const dirHandleRef = useRef(null);
-  // Track ongoing load operations to prevent duplicate requests
-  const loadingPromises = useRef({});
   // Background loading state
   const [isLoadingInBackground, setIsLoadingInBackground] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -77,9 +80,6 @@ export function useGFXCache(gfxFolder) {
   // Track which gfxFolder has been loaded to prevent re-loading
   const loadedFolderRef = useRef<string | null>(null);
   const isCurrentlyLoadingRef = useRef(false);
-  
-  // Global queue to serialize ALL image loading operations across entire app
-  const loadQueue = useRef<Promise<any>>(Promise.resolve());
 
   const loadGfx = useCallback(async (gfxNumber, resourceId) => {
     if (!gfxFolder) {
@@ -92,26 +92,26 @@ export function useGFXCache(gfxFolder) {
     const cacheKey = `${gfxNumber}_${resourceId}`;
     
     // Return cached bitmap if available
-    if (bitmapCache.current[cacheKey]) {
+    if (bitmapCache[cacheKey]) {
       console.log(`[useGFXCache] Cache HIT: ${cacheKey}`);
-      return bitmapCache.current[cacheKey];
+      return bitmapCache[cacheKey];
     }
 
     // If already loading, return the existing promise
-    if (loadingPromises.current[cacheKey]) {
+    if (loadingPromises[cacheKey]) {
       console.log(`[useGFXCache] Already loading: ${cacheKey}`);
-      return loadingPromises.current[cacheKey];
+      return loadingPromises[cacheKey];
     }
 
     console.log(`[useGFXCache] Cache MISS: ${cacheKey}, initiating load...`);
 
     // Queue this load to ensure only 1 image decodes at a time globally
     // This prevents browser main thread blocking from concurrent BMP decoding
-    const loadPromise = loadQueue.current.then(async () => {
+    const loadPromise: Promise<string | null> = loadQueue.then(async () => {
       const startTime = performance.now();
       try {
         // Check if we have the GFX file data cached
-        if (!gfxFileCache.current[gfxNumber]) {
+        if (!gfxFileCache[gfxNumber]) {
           let gfxData;
         
         if (isElectron && window.electronAPI) {
@@ -163,11 +163,11 @@ export function useGFXCache(gfxFolder) {
         }
         
         // Cache the GFX file data
-        gfxFileCache.current[gfxNumber] = gfxData;
+        gfxFileCache[gfxNumber] = gfxData;
       }
       
       // Extract bitmap from cached GFX data
-      const gfxData = gfxFileCache.current[gfxNumber];
+      const gfxData = gfxFileCache[gfxNumber];
       const extractStart = performance.now();
       const bitmapData = GFXLoader.extractBitmapByID(gfxData, resourceId);
       const extractTime = performance.now() - extractStart;
@@ -184,10 +184,11 @@ export function useGFXCache(gfxFolder) {
         }
         
         // Cache the result
-        bitmapCache.current[cacheKey] = dataUrl;
+        bitmapCache[cacheKey] = dataUrl;
         
         return dataUrl;
       }
+        return null;
       } catch (error) {
         console.error(`Error loading GFX ${gfxNumber} resource ${resourceId}:`, error);
         return null;
@@ -195,24 +196,24 @@ export function useGFXCache(gfxFolder) {
     });
 
     // Track the promise
-    loadingPromises.current[cacheKey] = loadPromise;
+    loadingPromises[cacheKey] = loadPromise;
     
     // Update the queue reference to chain subsequent loads
     // Catch errors so queue doesn't break on failures
-    loadQueue.current = loadPromise.then(() => {}, () => {});
+    loadQueue = loadPromise.then((result) => result, () => null);
 
     // Clean up the promise reference when done
     loadPromise.finally(() => {
-      delete loadingPromises.current[cacheKey];
+      delete loadingPromises[cacheKey];
     });
 
     return loadPromise;
   }, [gfxFolder]);
 
   // Client-side conversion of BMP to PNG data URL (keep in renderer to avoid IPC overhead)
-  const bitmapToCanvasDataURL = async (bitmapData) => {
-    return new Promise((resolve) => {
-      const blob = new Blob([bitmapData], { type: 'image/bmp' });
+  const bitmapToCanvasDataURL = async (bitmapData: Uint8Array): Promise<string> => {
+    return new Promise<string>((resolve, reject) => {
+      const blob = new Blob([bitmapData as any], { type: 'image/bmp' });
       const blobUrl = URL.createObjectURL(blob);
       const img = new Image();
       
@@ -245,14 +246,14 @@ export function useGFXCache(gfxFolder) {
         } catch (error) {
           console.error('Canvas error:', error);
           URL.revokeObjectURL(blobUrl);
-          resolve(null);
+          reject(error);
         }
       };
       
-      img.onerror = () => {
+      img.onerror = (error) => {
         console.error('Image load error');
         URL.revokeObjectURL(blobUrl);
-        resolve(null);
+        reject(error);
       };
       
       img.src = blobUrl;
@@ -260,16 +261,49 @@ export function useGFXCache(gfxFolder) {
   };
 
   const clearCache = useCallback(() => {
-    gfxFileCache.current = {};
-    bitmapCache.current = {};
+    // Clear module-level caches
+    Object.keys(gfxFileCache).forEach(key => delete gfxFileCache[key]);
+    Object.keys(bitmapCache).forEach(key => delete bitmapCache[key]);
+    Object.keys(loadingPromises).forEach(key => delete loadingPromises[key]);
+    loadQueue = Promise.resolve(null);
+    
     dirHandleRef.current = null;
-    loadingPromises.current = {};
     
     // Clean up progress listener
     if (cleanupListenerRef.current) {
       cleanupListenerRef.current();
       cleanupListenerRef.current = null;
     }
+    
+    console.log('[useGFXCache] Cache cleared');
+  }, []);
+
+  // Get cache statistics (useful for debugging)
+  const getCacheStats = useCallback(() => {
+    const gfxFileCount = Object.keys(gfxFileCache).length;
+    const bitmapCount = Object.keys(bitmapCache).length;
+    const loadingCount = Object.keys(loadingPromises).length;
+    
+    // Calculate approximate memory usage
+    let gfxMemoryBytes = 0;
+    Object.values(gfxFileCache).forEach(data => {
+      gfxMemoryBytes += data.byteLength;
+    });
+    
+    const gfxMemoryMB = (gfxMemoryBytes / 1024 / 1024).toFixed(2);
+    
+    console.log(`[useGFXCache] Cache Stats:
+      - GFX Files Cached: ${gfxFileCount}
+      - Bitmaps Cached: ${bitmapCount}
+      - Currently Loading: ${loadingCount}
+      - Memory Usage (GFX files): ~${gfxMemoryMB} MB`);
+    
+    return {
+      gfxFileCount,
+      bitmapCount,
+      loadingCount,
+      gfxMemoryMB: parseFloat(gfxMemoryMB)
+    };
   }, []);
 
   // Batch preload function for warming cache (throttled to avoid browser overload)
@@ -280,7 +314,7 @@ export function useGFXCache(gfxFolder) {
       try {
         // Skip if already cached (avoid unnecessary logging)
         const cacheKey = `${gfxNumber}_${resourceId}`;
-        if (bitmapCache.current[cacheKey]) {
+        if (bitmapCache[cacheKey]) {
           continue; // Already cached, skip
         }
         
@@ -358,7 +392,8 @@ export function useGFXCache(gfxFolder) {
 
   return { 
     loadGfx, 
-    clearCache, 
+    clearCache,
+    getCacheStats,
     saveDirHandle, 
     preloadGfxBatch,
     startBackgroundLoading,

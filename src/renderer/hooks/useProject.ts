@@ -6,7 +6,7 @@ import { ESFParser } from '../../esf-parser';
 import { EQFParser, QuestData } from '../../eqf-parser';
 import { recordToArray, arrayToRecord } from '../../utils/dataTransforms';
 
-export type TabType = 'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests';
+export type TabType = 'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests' | 'git';
 
 interface ProjectConfig {
   name: string;

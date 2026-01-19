@@ -1,6 +1,9 @@
 /**
  * Sprite loading utilities for character animation
  * Handles loading sprite data from GFX files and creating Image objects
+ * 
+ * CACHING: All loaded sprites and GFX data are cached at module level
+ * to prevent reloading when switching between views or updating character.
  */
 
 import { GFXLoader } from '../gfx-loader';
@@ -12,6 +15,10 @@ import {
   getBaseBootsGraphic,
   getBaseHatGraphic
 } from './constants';
+
+// MODULE-LEVEL CACHES - Persist across all component lifecycles
+const gfxFileCache: Record<number, Uint8Array> = {};
+const spriteImageCache: Record<string, HTMLImageElement | null> = {};
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface _SpriteData {
@@ -52,9 +59,17 @@ export interface ShieldSpriteSet {
 }
 
 /**
- * Load GFX file data
+ * Load GFX file data with caching
  */
 export async function loadGFXFile(gfxFolder: string, gfxNumber: number): Promise<Uint8Array | null> {
+  // Check cache first
+  if (gfxFileCache[gfxNumber]) {
+    console.log(`[sprite-loader] GFX ${gfxNumber} cache HIT`);
+    return gfxFileCache[gfxNumber];
+  }
+
+  console.log(`[sprite-loader] GFX ${gfxNumber} cache MISS, loading...`);
+  
   try {
     if (!window.electronAPI) {
       console.error('Electron API not available');
@@ -65,7 +80,13 @@ export async function loadGFXFile(gfxFolder: string, gfxNumber: number): Promise
       console.error(`Failed to load GFX ${gfxNumber}:`, result.error);
       return null;
     }
-    return new Uint8Array(result.data);
+    
+    const gfxData = new Uint8Array(result.data);
+    
+    // Cache the GFX file data
+    gfxFileCache[gfxNumber] = gfxData;
+    
+    return gfxData;
   } catch (error) {
     console.error(`Error loading GFX ${gfxNumber}:`, error);
     return null;
@@ -74,12 +95,24 @@ export async function loadGFXFile(gfxFolder: string, gfxNumber: number): Promise
 
 /**
  * Create an Image object from bitmap data with transparency processing
+ * Uses caching to avoid reprocessing the same bitmaps
  */
-export function createImageFromData(bitmapData: Uint8Array | null): Promise<HTMLImageElement | null> {
+export function createImageFromData(bitmapData: Uint8Array | null, cacheKey?: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve, reject) => {
     if (!bitmapData) {
       resolve(null);
       return;
+    }
+    
+    // Check cache if key provided
+    if (cacheKey && spriteImageCache[cacheKey]) {
+      console.log(`[sprite-loader] Image cache HIT: ${cacheKey}`);
+      resolve(spriteImageCache[cacheKey]);
+      return;
+    }
+    
+    if (cacheKey) {
+      console.log(`[sprite-loader] Image cache MISS: ${cacheKey}`);
     }
     
     const dataUrl = GFXLoader.createImageDataURL(bitmapData);
@@ -114,7 +147,13 @@ export function createImageFromData(bitmapData: Uint8Array | null): Promise<HTML
       
       // Create new image from processed canvas
       const processedImg = new Image();
-      processedImg.onload = () => resolve(processedImg);
+      processedImg.onload = () => {
+        // Cache the processed image if key provided
+        if (cacheKey) {
+          spriteImageCache[cacheKey] = processedImg;
+        }
+        resolve(processedImg);
+      };
       processedImg.onerror = () => reject(new Error('Failed to load processed image'));
       processedImg.src = canvas.toDataURL();
     };
@@ -124,9 +163,27 @@ export function createImageFromData(bitmapData: Uint8Array | null): Promise<HTML
 }
 
 /**
- * Load skin sprite sheets from GFX008
+ * Load skin sprite sheets from GFX008 with caching
  */
-export async function loadSkinSprites(gfxData: Uint8Array | null, _skinTone: number = 0): Promise<SkinSpriteSet> {
+export async function loadSkinSprites(gfxData: Uint8Array | null, skinTone: number = 0): Promise<SkinSpriteSet> {
+  const cacheKey = `skin_${skinTone}`;
+  
+  // Check if already cached (return cached sprites directly)
+  if (spriteImageCache[`${cacheKey}_standing`] && 
+      spriteImageCache[`${cacheKey}_walking`] &&
+      spriteImageCache[`${cacheKey}_attacking`]) {
+    console.log(`[sprite-loader] Skin sprites cache HIT for tone ${skinTone}`);
+    return {
+      standing: spriteImageCache[`${cacheKey}_standing`],
+      walking: spriteImageCache[`${cacheKey}_walking`],
+      attacking: spriteImageCache[`${cacheKey}_attacking`],
+      bow: spriteImageCache[`${cacheKey}_bow`] || null,
+      sittingChair: spriteImageCache[`${cacheKey}_sittingChair`] || null,
+      sittingFloor: spriteImageCache[`${cacheKey}_sittingFloor`] || null,
+    };
+  }
+  
+  console.log(`[sprite-loader] Skin sprites cache MISS for tone ${skinTone}`);
   const sprites: SkinSpriteSet = {};
   
   // Skin sprites in GFX008 are stored as sprite sheets where each sheet contains
@@ -148,7 +205,7 @@ export async function loadSkinSprites(gfxData: Uint8Array | null, _skinTone: num
   // Load standing sprite (resource 101)
   const standingData = GFXLoader.extractBitmapByID(gfxData, 101);
   if (standingData) {
-    sprites.standing = await createImageFromData(standingData);
+    sprites.standing = await createImageFromData(standingData, `${cacheKey}_standing`);
     console.log('Loaded standing sprite sheet');
   } else {
     console.warn('Failed to load standing sprite (resource 101)');
@@ -157,7 +214,7 @@ export async function loadSkinSprites(gfxData: Uint8Array | null, _skinTone: num
   // Load walking sprite (resource 102)
   const walkingData = GFXLoader.extractBitmapByID(gfxData, 102);
   if (walkingData) {
-    sprites.walking = await createImageFromData(walkingData);
+    sprites.walking = await createImageFromData(walkingData, `${cacheKey}_walking`);
     console.log('Loaded walking sprite sheet');
   } else {
     console.warn('Failed to load walking sprite (resource 102)');
@@ -166,7 +223,7 @@ export async function loadSkinSprites(gfxData: Uint8Array | null, _skinTone: num
   // Load attacking sprite (resource 103)
   const attackingData = GFXLoader.extractBitmapByID(gfxData, 103);
   if (attackingData) {
-    sprites.attacking = await createImageFromData(attackingData);
+    sprites.attacking = await createImageFromData(attackingData, `${cacheKey}_attacking`);
     console.log('Loaded attacking sprite sheet');
   } else {
     console.warn('Failed to load attacking sprite (resource 103)');
@@ -175,7 +232,7 @@ export async function loadSkinSprites(gfxData: Uint8Array | null, _skinTone: num
   // Load bow sprite (resource 107)
   const bowData = GFXLoader.extractBitmapByID(gfxData, 107);
   if (bowData) {
-    sprites.bow = await createImageFromData(bowData);
+    sprites.bow = await createImageFromData(bowData, `${cacheKey}_bow`);
     console.log('Loaded bow sprite sheet');
   } else {
     console.warn('Failed to load bow sprite (resource 107)');
@@ -185,7 +242,7 @@ export async function loadSkinSprites(gfxData: Uint8Array | null, _skinTone: num
   // Resource 105: chair sitting
   const chairData = GFXLoader.extractBitmapByID(gfxData, 105);
   if (chairData) {
-    sprites.sittingChair = await createImageFromData(chairData);
+    sprites.sittingChair = await createImageFromData(chairData, `${cacheKey}_sittingChair`);
     console.log('Loaded chair sitting sprite sheet');
   } else {
     console.warn('Failed to load chair sitting sprite (resource 105)');
@@ -194,7 +251,7 @@ export async function loadSkinSprites(gfxData: Uint8Array | null, _skinTone: num
   // Resource 106: floor sitting
   const floorData = GFXLoader.extractBitmapByID(gfxData, 106);
   if (floorData) {
-    sprites.sittingFloor = await createImageFromData(floorData);
+    sprites.sittingFloor = await createImageFromData(floorData, `${cacheKey}_sittingFloor`);
     console.log('Loaded floor sitting sprite sheet');
   } else {
     console.warn('Failed to load floor sitting sprite (resource 106)');
@@ -204,7 +261,7 @@ export async function loadSkinSprites(gfxData: Uint8Array | null, _skinTone: num
 }
 
 /**
- * Load hair sprites from GFX009 (male) or GFX010 (female)
+ * Load hair sprites from GFX009 (male) or GFX010 (female) with caching
  */
 export async function loadHairSprites(gfxData: Uint8Array | null, hairStyle: number = 0, hairColor: number = 0, direction: string = 'down'): Promise<HTMLImageElement | null> {
   // Hair sprites calculation from EndlessClient:
@@ -222,13 +279,15 @@ export async function loadHairSprites(gfxData: Uint8Array | null, hairStyle: num
   const directionOffset = (direction === 'down' || direction === 'right') ? 0 : 1;
   const resourceId = baseGraphic + 2 + (directionOffset * 2) + 100;
   
+  const cacheKey = `hair_${hairStyle}_${hairColor}_${direction}`;
+  
   console.log(`Loading hair: style ${hairStyle}, color ${hairColor}, direction ${direction}, resourceId ${resourceId}`);
   
   // Load single hair sprite for this direction
   const hairData = GFXLoader.extractBitmapByID(gfxData, resourceId);
   if (hairData) {
-    const hairSprite = await createImageFromData(hairData);
-    console.log('Loaded hair sprite:', hairSprite.width, 'x', hairSprite.height);
+    const hairSprite = await createImageFromData(hairData, cacheKey);
+    console.log('Loaded hair sprite:', hairSprite?.width, 'x', hairSprite?.height);
     return hairSprite;
   } else {
     console.warn('Failed to load hair sprite (resource', resourceId, ')');
@@ -548,4 +607,39 @@ export async function loadHelmetSprite(gfxFolder: string, graphicId: number, gen
   }
   
   return helmet;
+}
+
+/**
+ * Clear all sprite caches
+ */
+export function clearSpriteCache(): void {
+  Object.keys(gfxFileCache).forEach(key => delete gfxFileCache[key]);
+  Object.keys(spriteImageCache).forEach(key => delete spriteImageCache[key]);
+  console.log('[sprite-loader] All caches cleared');
+}
+
+/**
+ * Get cache statistics
+ */
+export function getSpriteCacheStats() {
+  const gfxCount = Object.keys(gfxFileCache).length;
+  const spriteCount = Object.keys(spriteImageCache).length;
+  
+  let gfxMemoryBytes = 0;
+  Object.values(gfxFileCache).forEach(data => {
+    gfxMemoryBytes += data.byteLength;
+  });
+  
+  const gfxMemoryMB = (gfxMemoryBytes / 1024 / 1024).toFixed(2);
+  
+  console.log(`[sprite-loader] Cache Stats:
+    - GFX Files Cached: ${gfxCount}
+    - Sprite Images Cached: ${spriteCount}
+    - Memory Usage (GFX): ~${gfxMemoryMB} MB`);
+  
+  return {
+    gfxFileCount: gfxCount,
+    spriteImageCount: spriteCount,
+    gfxMemoryMB: parseFloat(gfxMemoryMB)
+  };
 }

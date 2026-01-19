@@ -27,6 +27,7 @@ interface ElectronAPI {
   selectFolder: () => Promise<{ success: boolean; path?: string; error?: string }>;
   selectFile: (options: { filters: Array<{ name: string; extensions: string[] }> }) => Promise<{ success: boolean; path?: string; error?: string }>;
   convertBitmapToPNG: (bitmapData: Uint8Array | number[]) => Promise<{ success: boolean; dataUrl?: string; error?: string }>;
+  runCommand: (command: string) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
 }
 
 interface Window {
