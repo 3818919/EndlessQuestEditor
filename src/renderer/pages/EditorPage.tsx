@@ -4,11 +4,13 @@ import NpcList from '../components/npcs/NpcList';
 import ClassList from '../components/classes/ClassList';
 import SkillList from '../components/skills/SkillList';
 import InnList from '../components/inns/InnList';
+import QuestList from '../components/quests/QuestList';
 import ItemEditor from '../components/items/ItemEditor';
 import NpcEditor from '../components/npcs/NpcEditor';
 import ClassEditor from '../components/classes/ClassEditor';
 import SkillEditor from '../components/skills/SkillEditor';
 import InnEditor from '../components/inns/InnEditor';
+import QuestEditor from '../components/quests/QuestEditor';
 import SkillPreview from '../components/skills/SkillPreview';
 import DropsEditor from '../components/npcs/DropsEditor';
 import ItemDroppedBy from '../components/items/ItemDroppedBy';
@@ -24,6 +26,7 @@ import FaceIcon from '@mui/icons-material/Face';
 import CheckroomIcon from '@mui/icons-material/Checkroom';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
+import { QuestData } from '../../eqf-parser';
 
 interface EditorPageProps {
   // Data
@@ -33,9 +36,10 @@ interface EditorPageProps {
   esfData: any;
   innData: any;
   dropsData: Map<number, any[]>;
+  questData: Record<number, QuestData>;
   pubDirectory: string | null;
-  activeTab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns';
-  setActiveTab: (tab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns') => void;
+  activeTab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests';
+  setActiveTab: (tab: 'items' | 'npcs' | 'classes' | 'skills' | 'inns' | 'quests') => void;
   
   // Project settings
   projectName: string;
@@ -123,6 +127,14 @@ interface EditorPageProps {
   exportSkills: () => Promise<void>;
   exportInns: () => Promise<void>;
   
+  // Quest operations
+  createQuest: (templateName?: string) => Promise<number>;
+  deleteQuest: (id: number) => Promise<void>;
+  duplicateQuest: (id: number) => Promise<number>;
+  updateQuest: (id: number, updates: Partial<QuestData>) => Promise<void>;
+  importQuest: (eqfPath: string) => Promise<number>;
+  exportQuest: (id: number, savePath?: string) => Promise<void>;
+  
   // Legacy stubs
   loadDirectory: () => void;
 }
@@ -201,7 +213,14 @@ const EditorPage: React.FC<EditorPageProps> = ({
   exportClasses,
   exportSkills,
   exportInns,
-  loadDirectory
+  loadDirectory,
+  questData,
+  createQuest,
+  deleteQuest,
+  duplicateQuest,
+  updateQuest,
+  importQuest,
+  exportQuest
 }) => {
   // UI state - lives in EditorPage since it's editor-specific
   const [appearanceTab, setAppearanceTab] = useState('appearance');
@@ -214,6 +233,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<number | null>(null);
   const [selectedInnIndex, setSelectedInnIndex] = useState<number | null>(null);
+  const [selectedQuestId, setSelectedQuestId] = useState<number | null>(null);
 
   // Select first NPC when switching to NPCs tab
   useEffect(() => {
@@ -241,6 +261,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
   const selectedClass = selectedClassId !== null ? ecfData.classes[selectedClassId] : null;
   const selectedSkill = selectedSkillId !== null ? esfData.skills[selectedSkillId] : null;
   const selectedInn = selectedInnIndex !== null ? innData.inns[selectedInnIndex] : null;
+  const selectedQuest = selectedQuestId !== null ? questData[selectedQuestId] : null;
 
   // Wrapper for equipItem to match PaperdollSlots signature
   const handleEquipItemFromId = useCallback((itemId: number, slotKey: string) => {
@@ -270,6 +291,40 @@ const EditorPage: React.FC<EditorPageProps> = ({
     }
   };
 
+  const handleImportQuest = async () => {
+    if (!window.electronAPI) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.selectFile({
+        title: 'Select Quest File',
+        filters: [{ name: 'Quest Files', extensions: ['eqf'] }]
+      });
+
+      if (result.success && result.filePath) {
+        const questId = await importQuest(result.filePath);
+        setSelectedQuestId(questId);
+      }
+    } catch (error) {
+      console.error('Error importing quest:', error);
+      alert('Error importing quest: ' + (error as Error).message);
+    }
+  };
+
+  const handleCreateQuest = async (templateName?: string) => {
+    try {
+      const questId = await createQuest(templateName);
+      setSelectedQuestId(questId);
+      return questId;
+    } catch (error) {
+      console.error('Error creating quest:', error);
+      alert('Error creating quest: ' + (error as Error).message);
+      throw error;
+    }
+  };
+
   return (
     <div className="app">
       <VerticalSidebar
@@ -282,6 +337,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
         onImportClasses={importClasses}
         onImportSkills={importSkills}
         onImportInns={importInns}
+        onImportQuest={handleImportQuest}
         onExportNpcs={exportNpcs}
         onExportItems={exportItems}
         onExportDrops={exportDrops}
@@ -419,6 +475,25 @@ const EditorPage: React.FC<EditorPageProps> = ({
               currentProject={currentProject}
             />
           </div>
+
+          <div style={{ 
+            display: activeTab === 'quests' ? 'flex' : 'none', 
+            flex: 1,
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            <QuestList
+              quests={questData}
+              selectedQuestId={selectedQuestId}
+              onSelectQuest={setSelectedQuestId}
+              onCreateQuest={handleCreateQuest}
+              onDeleteQuest={deleteQuest}
+              onDuplicateQuest={duplicateQuest}
+              onImportQuest={handleImportQuest}
+              currentProject={currentProject}
+              leftPanelMinimized={leftPanelMinimized}
+            />
+          </div>
         </div>
         
         <div className="center-panel">
@@ -472,9 +547,18 @@ const EditorPage: React.FC<EditorPageProps> = ({
               npcs={enfData.npcs}
             />
           )}
+
+          {activeTab === 'quests' && (
+            <QuestEditor
+              quest={selectedQuest}
+              onSave={updateQuest}
+              onExport={exportQuest}
+              onDelete={deleteQuest}
+            />
+          )}
         </div>
         
-        {activeTab !== 'classes' && activeTab !== 'inns' && (
+        {activeTab !== 'classes' && activeTab !== 'inns' && activeTab !== 'quests' && (
         <div 
           className={`right-panel ${isResizing ? 'resizing' : ''} ${(isPanelMinimized || (activeTab === 'npcs' && !showPreview && npcTab !== 'drops') || (activeTab === 'items' && appearanceTab === 'droppedBy' && !selectedItem)) ? 'minimized' : ''}`}
           style={{ width: (isPanelMinimized || (activeTab === 'npcs' && !showPreview && npcTab !== 'drops') || (activeTab === 'items' && appearanceTab === 'droppedBy' && !selectedItem)) ? '60px' : `${rightPanelWidth}px` }}

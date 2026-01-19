@@ -9,6 +9,7 @@ interface FileMenuProps {
   onImportClasses: () => void;
   onImportSkills: () => void;
   onImportInns: () => void;
+  onImportQuest: () => void;
   onExportNpcs: () => void;
   onExportItems: () => void;
   onExportDrops: () => void;
@@ -26,6 +27,7 @@ const FileMenu: React.FC<FileMenuProps> = ({
   onImportClasses,
   onImportSkills,
   onImportInns,
+  onImportQuest,
   onExportNpcs, 
   onExportItems, 
   onExportDrops,
@@ -95,6 +97,12 @@ const FileMenu: React.FC<FileMenuProps> = ({
     setIsOpen(false);
     onImportInns();
   };
+
+  const handleImportQuest = () => {
+    setIsOpen(false);
+    onImportQuest();
+  };
+
   const handleSave = () => {
     setIsOpen(false);
     onSave();
@@ -139,6 +147,9 @@ const FileMenu: React.FC<FileMenuProps> = ({
               </button>
               <button className="file-menu-item" onClick={handleImportDrops}>
                 <span>Drops (.txt)</span>
+              </button>
+              <button className="file-menu-item" onClick={handleImportQuest}>
+                <span>Quest (.eqf)</span>
               </button>
             </div>
             <div className="file-menu-section">

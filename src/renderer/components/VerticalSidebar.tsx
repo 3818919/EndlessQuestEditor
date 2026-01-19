@@ -5,6 +5,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import HouseIcon from '@mui/icons-material/House';
 import FileMenu from './FileMenu';
 import { CrossedSwordsIcon, SkullCrossedBonesIcon, SpellBookIcon } from './icons';
+import QuestIcon from './icons/QuestIcon';
 
 interface VerticalSidebarProps {
   activeTab: string;
@@ -117,6 +118,13 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         title="Inns / Spawn Points"
       >
         <HouseIcon />
+      </button>
+      <button
+        className={`left-sidebar-button ${activeTab === 'quests' && !leftPanelMinimized ? 'active' : ''}`}
+        onClick={() => handleTabClick('quests')}
+        title="Quests"
+      >
+        <QuestIcon size={24} />
       </button>
       <div className="sidebar-spacer"></div>
       <button

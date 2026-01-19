@@ -104,14 +104,7 @@ export default function ClassList({
           searchPlaceholder="Search classes..."
           minimized={leftPanelMinimized}
           onToggleSearch={() => setShowFilterPopup(!showFilterPopup)}
-        >
-          <button 
-            onClick={onAddClass}
-            className="btn btn-success btn-small"
-          >
-            + Add Class
-          </button>
-        </ListFilter>
+        />
 
         <GenericList
           items={listItems}
@@ -120,6 +113,37 @@ export default function ClassList({
           minimized={leftPanelMinimized}
           emptyMessage="No classes found"
         />
+
+        <div style={{
+          padding: '8px',
+          borderTop: '1px solid #3a3a3a',
+          backgroundColor: '#252525'
+        }}>
+          <button 
+            onClick={onAddClass}
+            className="btn btn-primary"
+            style={{
+              width: '100%',
+              padding: '8px',
+              backgroundColor: '#0e7490',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0891b2'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0e7490'}
+          >
+            <span>+</span>
+            {!leftPanelMinimized && <span>New Class</span>}
+          </button>
+        </div>
       </div>
     </>
   );

@@ -3,6 +3,7 @@ import { EIFParser } from '../../eif-parser';
 import { ENFParser } from '../../enf-parser';
 import { ECFParser } from '../../ecf-parser';
 import { ESFParser } from '../../esf-parser';
+import { EQFParser, QuestData } from '../../eqf-parser';
 import { recordToArray, arrayToRecord } from '../../utils/dataTransforms';
 
 interface ProjectConfig {
@@ -18,6 +19,7 @@ interface ProjectData {
   classes?: Record<number, any>;
   skills?: Record<number, any>;
   drops?: Map<number, any[]>;
+  quests?: Record<number, QuestData>;
   equipment?: {
     equippedItems: Record<string, any>;
     appearance: {
@@ -41,6 +43,12 @@ interface UseProjectReturn {
   setCurrentProject: (projectName: string) => void;
   setGfxFolder: (path: string) => void;
   setPubDirectory: (path: string | null) => void;
+  createQuest: (templateName?: string) => Promise<number>;
+  updateQuest: (questId: number, updates: Partial<QuestData>) => Promise<void>;
+  deleteQuest: (questId: number) => Promise<void>;
+  importQuest: (eqfPath: string) => Promise<number>;
+  exportQuest: (questId: number, savePath?: string) => Promise<void>;
+  duplicateQuest: (questId: number) => Promise<number>;
 }
 
 export const useProject = (): UseProjectReturn => {
@@ -427,6 +435,24 @@ export const useProject = (): UseProjectReturn => {
       } else {
         console.log('equipment.json not found');
       }
+
+      // Load quests.json
+      const questsPath = `${projectFolder}/quests.json`;
+      result = await window.electronAPI.readTextFile(questsPath);
+      if (result.success) {
+        const questsData = JSON.parse(result.data);
+        if (Array.isArray(questsData)) {
+          projectData.quests = arrayToRecord(questsData);
+          console.log('quests.json loaded successfully');
+        } else {
+          projectData.quests = {};
+          console.log('quests.json is not an array, initialized as empty');
+        }
+        jsonFilesFound = true;
+      } else {
+        projectData.quests = {};
+        console.log('quests.json not found, initialized as empty');
+      }
       
       // Update state
       setCurrentProject(projectFolder);
@@ -538,6 +564,322 @@ export const useProject = (): UseProjectReturn => {
     }
   }, [oaktreeDir, currentProject]);
 
+  const createQuest = useCallback(async (templateName?: string): Promise<number> => {
+    if (!currentProject || !isElectron || !window.electronAPI) {
+      throw new Error('No project selected');
+    }
+
+    try {
+      // Load existing quests to find next available ID
+      const questsPath = `${currentProject}/quests.json`;
+      let quests: Record<number, QuestData> = {};
+      let nextId = 1;
+
+      const questsResult = await window.electronAPI.readTextFile(questsPath);
+      if (questsResult.success) {
+        const questsArray = JSON.parse(questsResult.data);
+        quests = arrayToRecord(questsArray);
+        const ids = Object.keys(quests).map(k => parseInt(k));
+        nextId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
+      }
+
+      // Create new quest with template if specified
+      let newQuest: QuestData;
+      if (templateName) {
+        // Template will be imported in later step
+        const { QUEST_TEMPLATES } = await import('../utils/questTemplates');
+        const template = QUEST_TEMPLATES[templateName];
+        if (template) {
+          newQuest = { ...template, id: nextId };
+        } else {
+          throw new Error(`Template "${templateName}" not found`);
+        }
+      } else {
+        // Create empty quest
+        newQuest = {
+          id: nextId,
+          questName: `Quest ${nextId}`,
+          version: 1,
+          states: [{
+            name: 'Begin',
+            description: 'Quest start',
+            actions: [],
+            rules: []
+          }],
+          randomBlocks: []
+        };
+      }
+
+      // Add to quests collection
+      quests[nextId] = newQuest;
+
+      // Save quests.json
+      const questsArray = recordToArray(quests);
+      const writeResult = await window.electronAPI.writeTextFile(
+        questsPath,
+        JSON.stringify(questsArray, null, 2)
+      );
+
+      if (!writeResult.success) {
+        throw new Error(`Failed to save quest: ${writeResult.error}`);
+      }
+
+      console.log(`Created quest ${nextId}`);
+      return nextId;
+    } catch (error) {
+      console.error('Error creating quest:', error);
+      throw error;
+    }
+  }, [currentProject]);
+
+  const updateQuest = useCallback(async (questId: number, updates: Partial<QuestData>) => {
+    if (!currentProject || !isElectron || !window.electronAPI) {
+      throw new Error('No project selected');
+    }
+
+    try {
+      // Load quests
+      const questsPath = `${currentProject}/quests.json`;
+      const questsResult = await window.electronAPI.readTextFile(questsPath);
+      
+      if (!questsResult.success) {
+        throw new Error('Quests file not found');
+      }
+
+      const questsArray = JSON.parse(questsResult.data);
+      const quests = arrayToRecord(questsArray);
+
+      if (!quests[questId]) {
+        throw new Error(`Quest ${questId} not found`);
+      }
+
+      // Update quest
+      quests[questId] = { ...quests[questId], ...updates, id: questId };
+
+      // Save quests.json
+      const updatedArray = recordToArray(quests);
+      const writeResult = await window.electronAPI.writeTextFile(
+        questsPath,
+        JSON.stringify(updatedArray, null, 2)
+      );
+
+      if (!writeResult.success) {
+        throw new Error(`Failed to update quest: ${writeResult.error}`);
+      }
+
+      console.log(`Updated quest ${questId}`);
+    } catch (error) {
+      console.error('Error updating quest:', error);
+      throw error;
+    }
+  }, [currentProject]);
+
+  const deleteQuest = useCallback(async (questId: number) => {
+    if (!currentProject || !isElectron || !window.electronAPI) {
+      throw new Error('No project selected');
+    }
+
+    try {
+      // Load quests
+      const questsPath = `${currentProject}/quests.json`;
+      const questsResult = await window.electronAPI.readTextFile(questsPath);
+      
+      if (!questsResult.success) {
+        throw new Error('Quests file not found');
+      }
+
+      const questsArray = JSON.parse(questsResult.data);
+      const quests = arrayToRecord(questsArray);
+
+      // Delete quest
+      delete quests[questId];
+
+      // Save quests.json
+      const updatedArray = recordToArray(quests);
+      const writeResult = await window.electronAPI.writeTextFile(
+        questsPath,
+        JSON.stringify(updatedArray, null, 2)
+      );
+
+      if (!writeResult.success) {
+        throw new Error(`Failed to delete quest: ${writeResult.error}`);
+      }
+
+      console.log(`Deleted quest ${questId}`);
+    } catch (error) {
+      console.error('Error deleting quest:', error);
+      throw error;
+    }
+  }, [currentProject]);
+
+  const importQuest = useCallback(async (eqfPath: string): Promise<number> => {
+    if (!currentProject || !isElectron || !window.electronAPI) {
+      throw new Error('No project selected');
+    }
+
+    try {
+      // Read EQF file
+      const fileResult = await window.electronAPI.readTextFile(eqfPath);
+      if (!fileResult.success) {
+        throw new Error(`Failed to read quest file: ${fileResult.error}`);
+      }
+
+      // Extract quest ID from filename (e.g., 00013.eqf -> 13)
+      const filename = eqfPath.split('/').pop() || eqfPath.split('\\').pop() || '';
+      const match = filename.match(/(\d+)\.eqf$/i);
+      let suggestedId = match ? parseInt(match[1], 10) : null;
+
+      // Load existing quests
+      const questsPath = `${currentProject}/quests.json`;
+      let quests: Record<number, QuestData> = {};
+      
+      const questsResult = await window.electronAPI.readTextFile(questsPath);
+      if (questsResult.success) {
+        const questsArray = JSON.parse(questsResult.data);
+        quests = arrayToRecord(questsArray);
+      }
+
+      // Assign next available ID if suggested ID is taken or invalid
+      let questId = suggestedId;
+      if (!questId || quests[questId]) {
+        const ids = Object.keys(quests).map(k => parseInt(k));
+        questId = ids.length > 0 ? Math.max(...ids) + 1 : 1;
+      }
+
+      // Parse EQF file
+      const parsedQuest = EQFParser.parse(fileResult.data, questId);
+
+      // Add to quests collection
+      quests[questId] = parsedQuest;
+
+      // Save quests.json
+      const questsArray = recordToArray(quests);
+      const writeResult = await window.electronAPI.writeTextFile(
+        questsPath,
+        JSON.stringify(questsArray, null, 2)
+      );
+
+      if (!writeResult.success) {
+        throw new Error(`Failed to save quest: ${writeResult.error}`);
+      }
+
+      console.log(`Imported quest ${questId} from ${eqfPath}`);
+      return questId;
+    } catch (error) {
+      console.error('Error importing quest:', error);
+      throw error;
+    }
+  }, [currentProject]);
+
+  const exportQuest = useCallback(async (questId: number, savePath?: string) => {
+    if (!currentProject || !isElectron || !window.electronAPI) {
+      throw new Error('No project selected');
+    }
+
+    try {
+      // Load quests
+      const questsPath = `${currentProject}/quests.json`;
+      const questsResult = await window.electronAPI.readTextFile(questsPath);
+      
+      if (!questsResult.success) {
+        throw new Error('Quests file not found');
+      }
+
+      const questsArray = JSON.parse(questsResult.data);
+      const quests = arrayToRecord(questsArray);
+
+      if (!quests[questId]) {
+        throw new Error(`Quest ${questId} not found`);
+      }
+
+      // Serialize to EQF format
+      const eqfContent = EQFParser.serialize(quests[questId]);
+
+      // Generate filename
+      const filename = String(questId).padStart(5, '0') + '.eqf';
+
+      // Determine save path
+      let finalPath = savePath;
+      if (!finalPath) {
+        // Open save dialog
+        const result = await window.electronAPI.saveFile(filename, [
+          { name: 'EQF Files', extensions: ['eqf'] }
+        ]);
+        if (!result) {
+          console.log('Export cancelled');
+          return;
+        }
+        finalPath = result;
+      }
+
+      // Write EQF file
+      const writeResult = await window.electronAPI.writeTextFile(finalPath, eqfContent);
+
+      if (!writeResult.success) {
+        throw new Error(`Failed to export quest: ${writeResult.error}`);
+      }
+
+      console.log(`Exported quest ${questId} to ${finalPath}`);
+    } catch (error) {
+      console.error('Error exporting quest:', error);
+      throw error;
+    }
+  }, [currentProject]);
+
+  const duplicateQuest = useCallback(async (questId: number): Promise<number> => {
+    if (!currentProject || !isElectron || !window.electronAPI) {
+      throw new Error('No project selected');
+    }
+
+    try {
+      // Load quests
+      const questsPath = `${currentProject}/quests.json`;
+      const questsResult = await window.electronAPI.readTextFile(questsPath);
+      
+      if (!questsResult.success) {
+        throw new Error('Quests file not found');
+      }
+
+      const questsArray = JSON.parse(questsResult.data);
+      const quests = arrayToRecord(questsArray);
+
+      if (!quests[questId]) {
+        throw new Error(`Quest ${questId} not found`);
+      }
+
+      // Find next available ID
+      const ids = Object.keys(quests).map(k => parseInt(k));
+      const newId = Math.max(...ids) + 1;
+
+      // Create duplicate
+      const original = quests[questId];
+      const duplicate: QuestData = {
+        ...JSON.parse(JSON.stringify(original)), // Deep clone
+        id: newId,
+        questName: `${original.questName} (Copy)`
+      };
+
+      quests[newId] = duplicate;
+
+      // Save quests.json
+      const updatedArray = recordToArray(quests);
+      const writeResult = await window.electronAPI.writeTextFile(
+        questsPath,
+        JSON.stringify(updatedArray, null, 2)
+      );
+
+      if (!writeResult.success) {
+        throw new Error(`Failed to duplicate quest: ${writeResult.error}`);
+      }
+
+      console.log(`Duplicated quest ${questId} to ${newId}`);
+      return newId;
+    } catch (error) {
+      console.error('Error duplicating quest:', error);
+      throw error;
+    }
+  }, [currentProject]);
+
   return {
     currentProject,
     projectName,
@@ -549,6 +891,12 @@ export const useProject = (): UseProjectReturn => {
     updateProjectSettings,
     setCurrentProject,
     setGfxFolder,
-    setPubDirectory
+    setPubDirectory,
+    createQuest,
+    updateQuest,
+    deleteQuest,
+    importQuest,
+    exportQuest,
+    duplicateQuest
   };
 };

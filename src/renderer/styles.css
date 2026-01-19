@@ -29,6 +29,23 @@
   --shadow: rgba(0, 0, 0, 0.4);
 }
 
+/* Monaco Editor Highlighted Line */
+.highlighted-line {
+  background-color: rgba(14, 116, 144, 0.3) !important;
+}
+
+.highlighted-line-glyph {
+  background-color: #0e7490 !important;
+  width: 3px !important;
+}
+
+/* Monaco Editor Goto Links */
+.goto-link {
+  text-decoration: underline;
+  color: #4fc3f7 !important;
+  cursor: pointer;
+}
+
 :root[data-theme="light"] {
   --bg-primary: #ffffff;
   --bg-secondary: #f5f5f5;

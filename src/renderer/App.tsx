@@ -14,6 +14,7 @@ const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
 const App: React.FC = () => {
   const [dropsData, setDropsData] = useState<Map<number, any[]>>(new Map());
+  const [questData, setQuestData] = useState<Record<number, any>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   
@@ -91,7 +92,13 @@ const App: React.FC = () => {
     updateProjectSettings,
     setCurrentProject,
     setGfxFolder,
-    setPubDirectory: setProjectPubDirectory
+    setPubDirectory: setProjectPubDirectory,
+    createQuest: createQuestHook,
+    updateQuest: updateQuestHook,
+    deleteQuest: deleteQuestHook,
+    importQuest: importQuestHook,
+    exportQuest: exportQuestHook,
+    duplicateQuest: duplicateQuestHook
   } = useProject();
 
   const { 
@@ -175,6 +182,7 @@ const App: React.FC = () => {
           setEsfData,
           setInnData,
           setDropsData,
+          setQuestData,
           restoreEquipment,
           setGender,
           setHairStyle,
@@ -186,6 +194,63 @@ const App: React.FC = () => {
       console.error('Error selecting project:', error);
       alert('Error selecting project: ' + (error as Error).message);
     }
+  };
+
+  // Helper to reload quest data
+  const reloadQuestData = async () => {
+    if (!currentProject || !window.electronAPI) return;
+    
+    try {
+      const questsPath = `${currentProject}/quests.json`;
+      const result = await window.electronAPI.readTextFile(questsPath);
+      
+      if (result.success) {
+        const questsArray = JSON.parse(result.data);
+        const quests: Record<number, any> = {};
+        questsArray.forEach((quest: any) => {
+          quests[quest.id] = quest;
+        });
+        setQuestData(quests);
+      } else {
+        setQuestData({});
+      }
+    } catch (error) {
+      console.error('Error reloading quest data:', error);
+      setQuestData({});
+    }
+  };
+
+  // Quest operation wrappers that update local state
+  const createQuest = async (templateName?: string) => {
+    const questId = await createQuestHook(templateName);
+    await reloadQuestData();
+    return questId;
+  };
+
+  const updateQuest = async (questId: number, updates: any) => {
+    await updateQuestHook(questId, updates);
+    await reloadQuestData();
+  };
+
+  const deleteQuest = async (questId: number) => {
+    await deleteQuestHook(questId);
+    await reloadQuestData();
+  };
+
+  const importQuest = async (eqfPath: string) => {
+    const questId = await importQuestHook(eqfPath);
+    await reloadQuestData();
+    return questId;
+  };
+
+  const exportQuest = async (questId: number, savePath?: string) => {
+    await exportQuestHook(questId, savePath);
+  };
+
+  const duplicateQuest = async (questId: number) => {
+    const newQuestId = await duplicateQuestHook(questId);
+    await reloadQuestData();
+    return newQuestId;
   };
 
   // Start background GFX loading when gfxFolder is set
@@ -223,14 +288,6 @@ const App: React.FC = () => {
     loadPreset,
     deletePreset
   } = useAppearance();
-
-  // Wrapper for equipItem to match PaperdollSlots signature
-  const handleEquipItemFromId = useCallback((itemId: number, slotKey: string) => {
-    const item = eifData.items[itemId];
-    if (item) {
-      equipItem(item, slotKey);
-    }
-  }, [eifData.items, equipItem]);
 
   // Update window title with asterisk when there are unsaved changes
   React.useEffect(() => {
@@ -297,6 +354,7 @@ const App: React.FC = () => {
         esfData,
         innData,
         dropsData,
+        questData,
         equippedItems,
         appearance: {
           gender,
@@ -384,6 +442,7 @@ const App: React.FC = () => {
       esfData={esfData}
       innData={innData}
       dropsData={dropsData}
+      questData={questData}
       pubDirectory={pubDirectory}
       projectName={projectName}
       currentProject={currentProject}
@@ -450,6 +509,12 @@ const App: React.FC = () => {
       exportSkills={exportSkills}
       exportInns={exportInns}
       loadDirectory={loadDirectory}
+      createQuest={createQuest}
+      updateQuest={updateQuest}
+      deleteQuest={deleteQuest}
+      importQuest={importQuest}
+      exportQuest={exportQuest}
+      duplicateQuest={duplicateQuest}
     />
   );
 }

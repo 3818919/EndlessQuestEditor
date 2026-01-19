@@ -9,6 +9,7 @@ interface SaveProjectOptions {
   esfData: any;
   innData: any;
   dropsData: Map<number, any[]>;
+  questData: Record<number, any>;
   equippedItems: Record<string, any>;
   appearance: {
     gender: number;
@@ -56,6 +57,7 @@ interface ProjectData {
   skills?: Record<number, any>;
   inns?: any[];
   drops?: Map<number, any[]>;
+  quests?: Record<number, any>;
   equipment?: {
     equippedItems: Record<string, any>;
     appearance: {
@@ -83,6 +85,7 @@ export class ProjectService {
       esfData,
       innData,
       dropsData,
+      questData,
       equippedItems,
       appearance
     } = options;
@@ -157,6 +160,15 @@ export class ProjectService {
     }
     console.log('drops.json saved successfully');
 
+    // Save quests.json
+    const questsArray = recordToArray(questData);
+    const questsPath = `${currentProject}/quests.json`;
+    result = await window.electronAPI.writeTextFile(questsPath, JSON.stringify(questsArray, null, 2));
+    if (!result.success) {
+      throw new Error(`Failed to save quests.json: ${result.error}`);
+    }
+    console.log('quests.json saved successfully');
+
     // Save equipment.json with currently equipped items and appearance
     const equipmentData = {
       equippedItems,
@@ -182,6 +194,7 @@ export class ProjectService {
       setEsfData: (data: any) => void;
       setInnData: (data: any) => void;
       setDropsData: (data: Map<number, any[]>) => void;
+      setQuestData: (data: Record<number, any>) => void;
       restoreEquipment: (equipment: Record<string, any>) => void;
       setGender: (gender: number) => void;
       setHairStyle: (style: number) => void;
@@ -196,6 +209,7 @@ export class ProjectService {
       setEsfData,
       setInnData,
       setDropsData,
+      setQuestData,
       restoreEquipment,
       setGender,
       setHairStyle,
@@ -225,6 +239,10 @@ export class ProjectService {
     
     if (projectData.drops) {
       setDropsData(projectData.drops);
+    }
+
+    if (projectData.quests) {
+      setQuestData(projectData.quests);
     }
 
     // Restore equipment and appearance if available
