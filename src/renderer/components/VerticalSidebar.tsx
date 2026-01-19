@@ -7,7 +7,7 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import FileMenu from './FileMenu';
-import { CrossedSwordsIcon, SkullCrossedBonesIcon, SpellBookIcon } from './icons';
+import { CrossedSwordsIcon, DragonHeadIcon, SpellBookIcon } from './icons';
 import QuestIcon from './icons/QuestIcon';
 import DraggableTabButton from './DraggableTabButton';
 import type { TabType } from '../hooks/useProject';
@@ -74,7 +74,7 @@ const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   // Tab configuration mapping
   const tabConfig: Record<TabType, { title: string; icon: React.ReactNode }> = {
     items: { title: 'Items', icon: <ListAltIcon /> },
-    npcs: { title: 'NPCs / Monsters', icon: <SkullCrossedBonesIcon /> },
+    npcs: { title: 'NPCs / Monsters', icon: <DragonHeadIcon /> },
     classes: { title: 'Classes', icon: <CrossedSwordsIcon /> },
     skills: { title: 'Skills / Spells', icon: <SpellBookIcon /> },
     inns: { title: 'Inns / Spawn Points', icon: <HouseIcon /> },

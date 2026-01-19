@@ -2,6 +2,6 @@
 // Icons from game-icons.net under CC BY 3.0 license
 
 export { default as CrossedSwordsIcon } from './CrossedSwordsIcon';
-export { default as SkullCrossedBonesIcon } from './SkullCrossedBonesIcon';
+export { default as DragonHeadIcon } from './DragonHeadIcon';
 export { default as SpellBookIcon } from './SpellBookIcon';
 export { default as HotelIcon } from './HotelIcon';

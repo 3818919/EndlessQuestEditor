@@ -2,7 +2,7 @@ import React from 'react';
 
 // Monster icon from game-icons.net
 // By Lorc under CC BY 3.0 (http://creativecommons.org/licenses/by/3.0/)
-const SkullCrossedBonesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+const DragonHeadIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
     viewBox="0 0 512 512"
@@ -15,4 +15,4 @@ const SkullCrossedBonesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) =
   </svg>
 );
 
-export default SkullCrossedBonesIcon;
+export default DragonHeadIcon;
