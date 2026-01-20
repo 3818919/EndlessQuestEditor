@@ -3,7 +3,30 @@
  * Converts BMP Buffer to PNG base64 data URL with transparency
  */
 
-const sharp = require('sharp');
+import path from 'path';
+
+// Load sharp from unpacked directory in production
+let sharp: any;
+try {
+  // @ts-ignore - Electron's process has resourcesPath in production
+  if (process.env.NODE_ENV === 'production' && process.resourcesPath) {
+    // In production, load from app.asar.unpacked
+    const unpackedPath = path.join(
+      // @ts-ignore
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      'sharp'
+    );
+    sharp = require(unpackedPath);
+  } else {
+    // In development, load normally
+    sharp = require('sharp');
+  }
+} catch (error) {
+  console.error('Failed to load sharp from unpacked directory, trying normal require:', error);
+  sharp = require('sharp');
+}
 
 export class BMPConverter {
   /**
