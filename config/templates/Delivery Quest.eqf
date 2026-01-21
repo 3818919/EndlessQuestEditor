@@ -4,53 +4,77 @@ Main
 	version		1
 }
 
-State Begin
+state Begin
 {
-	desc	"Talk to NPC #1"
-	action	AddNpcText(1, "I need you to deliver this package to someone.");
-	action	AddNpcText(1, "Can you take it to NPC #2 for me?");
-	action	AddNpcInput(1, 1, "Yes, I can deliver it.");
-	action	AddNpcInput(1, 2, "No thanks.");
+	desc	"Talk to NPC_Name"
+
+	action	AddNpcText(QUEST_ID_1, "I need you to deliver this package to someone.");
+	action	AddNpcText(QUEST_ID_1, "Can you take it to NPC_Name for me?");
+	action	AddNpcInput(QUEST_ID_1, 1, "Sure!");
+	action	AddNpcInput(QUEST_ID_1, 2, "No thanks.");
 	rule	InputNpc(1) goto GotPackage
 	rule	InputNpc(2) goto Begin
 }
 
-State GotPackage
+state GotPackage
 {
-	desc	"Deliver package to NPC #2"
+	desc	"Deliver package to NPC_Name"
+
 	action	GiveItem(200, 1);
-	action	AddNpcText(1, "Thank you! Please deliver this to NPC #2.");
-	rule	TalkedToNpc(1) goto DeliverPackage
+	action	AddNpcText(QUEST_ID_1, "Thank you! Please deliver this to NPC_Name.");
+
+	action	AddNpcText(QUEST_ID_2, "Oh, you have a delivery for me?");
+	action	AddNpcInput(QUEST_ID_2, 1, "Yes, here it is.");
+
+	rule	InputNpc(1) goto CheckPackage
+	rule	LostItems(200, 1) goto LostPackage
+
 }
 
-State DeliverPackage
+state LostPackage
 {
-	desc	"Talk to NPC #2"
-	action	AddNpcText(2, "Oh, you have a delivery for me?");
-	action	AddNpcInput(2, 1, "Yes, here it is.");
-	rule	InputNpc(1) goto ReturnToSender
-	rule	LostItems(200, 1) goto Begin
+	desc	"Talk to NPC_Name"
+	
+	action	ShowHint("[Quest Failed] You have lost the package! Return to NPC_Name");
+	action	PlaySound(5);
+	rule	Always() goto Restart
 }
 
-State ReturnToSender
+state CheckPackage
 {
-	desc	"Return to NPC #1"
+	rule	GotItems(200, 1) goto ReturnToSender
+
+	action	AddNpcText(QUEST_ID_2, "Oh I thought you had my package?");
+	rule	TalkedToNpc(QUEST_ID_2) goto LostPackage
+}
+
+state ReturnToSender
+{
+	desc	"Return to NPC_Name"
+
 	action	RemoveItem(200, 1);
-	action	AddNpcText(2, "Thank you! Please tell the sender I received it.");
-	rule	TalkedToNpc(2) goto CompleteDelivery
+	
+	action	AddNpcText(QUEST_ID_2, "Thank you! Please tell the sender I received it.");
+	rule	TalkedToNpc(QUEST_ID_2) goto CompleteDelivery
 }
 
-State CompleteDelivery
+state CompleteDelivery
 {
-	desc	"Talk to NPC #1"
-	action	AddNpcText(1, "Excellent work! Here is your reward.");
-	rule	TalkedToNpc(1) goto Reward
+	desc	"Talk to NPC_Name"
+
+	action	AddNpcText(QUEST_ID_1, "Excellent work! Here is your reward.");
+	rule	TalkedToNpc(QUEST_ID_1) goto Reward
 }
 
-State Reward
+state Reward
 {
 	desc	""
 	action	GiveExp(500);
 	action	GiveItem(1, 250);
 	action	End();
+}
+
+state Restart
+{
+	action	Reset();
 }

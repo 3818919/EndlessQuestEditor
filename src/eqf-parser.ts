@@ -1022,7 +1022,7 @@ export class EQFParser {
     
     output += '}\n\n';
 
-    // Serialize random blocks
+    // Serialize random blocks (random keyword is lowercase)
     quest.randomBlocks.forEach(block => {
       output += `random ${block.name}\n{\n`;
       block.entries.forEach(entry => {
@@ -1036,7 +1036,7 @@ export class EQFParser {
 
     // Serialize states
     quest.states.forEach(state => {
-      output += `State ${state.name}\n{\n`;
+      output += `state ${state.name}\n{\n`;
       
       if (state.description) {
         output += `\tdesc\t"${state.description}"\n`;

@@ -21,42 +21,43 @@ export default function QuestTextEditor({ quest, onSave, navigateToState, onNavi
   const editorRef = useRef<any>(null);
   const hoverProvidersRef = useRef<any[]>([]);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastQuestIdRef = useRef<number | null>(null);
+  const isInternalSaveRef = useRef(false);
 
   // Load config on mount
   useEffect(() => {
     loadConfig().then(setConfig);
   }, []);
 
-  // Initialize EQF text from quest data
+  // Initialize EQF text from quest data - only when quest ID changes (different quest selected)
   useEffect(() => {
-    // Cancel any pending auto-save when quest changes externally
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
+    // Skip if this is our own save triggering a re-render
+    if (isInternalSaveRef.current) {
+      isInternalSaveRef.current = false;
+      return;
     }
     
-    // Only update if there are no unsaved local changes
-    if (!hasChanges) {
-      try {
-        const text = EQFParser.serialize(quest);
-        setEqfText(text);
-        setError(null);
-      } catch (err) {
-        setError(`Failed to serialize quest: ${err}`);
+    // Only reload text when switching to a different quest
+    if (quest.id !== lastQuestIdRef.current) {
+      lastQuestIdRef.current = quest.id;
+      
+      // Cancel any pending auto-save when switching quests
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
       }
-    } else {
-      // If we had changes but quest changed externally, discard local changes
-      setHasChanges(false);
+      
       try {
         const text = EQFParser.serialize(quest);
         setEqfText(text);
         setError(null);
+        setHasChanges(false);
       } catch (err) {
         setError(`Failed to serialize quest: ${err}`);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quest]);
+  }, [quest.id]);
 
   // Save function
   const handleSave = useCallback(() => {
@@ -64,6 +65,7 @@ export default function QuestTextEditor({ quest, onSave, navigateToState, onNavi
 
     try {
       const parsedQuest = EQFParser.parse(eqfText, quest.id);
+      isInternalSaveRef.current = true; // Mark this as an internal save
       onSave(parsedQuest);
       setHasChanges(false);
       setError(null);
@@ -72,7 +74,7 @@ export default function QuestTextEditor({ quest, onSave, navigateToState, onNavi
     }
   }, [hasChanges, eqfText, quest.id, onSave]);
 
-  // Auto-save text changes after user stops typing
+  // Auto-save text changes every 5 seconds after user stops typing
   useEffect(() => {
     if (hasChanges) {
       if (autoSaveTimerRef.current) {
@@ -81,7 +83,7 @@ export default function QuestTextEditor({ quest, onSave, navigateToState, onNavi
       
       autoSaveTimerRef.current = setTimeout(() => {
         handleSave();
-      }, 1000);
+      }, 5000); // 5 seconds auto-save delay
     }
     
     return () => {

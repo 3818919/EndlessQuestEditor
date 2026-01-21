@@ -453,6 +453,28 @@ ipcMain.handle('config:initialize', async () => {
       }
     }
     
+    // Create templates/states directory and copy state templates if it doesn't exist
+    const statesDir = path.join(userConfigDir, 'templates', 'states');
+    try {
+      await fs.access(statesDir);
+    } catch {
+      await fs.mkdir(statesDir, { recursive: true });
+      
+      // Copy all state template files from bundled config
+      const bundledStatesDir = path.join(bundledConfigDir, 'templates', 'states');
+      try {
+        const files = await fs.readdir(bundledStatesDir);
+        for (const file of files) {
+          if (file.endsWith('.eqf')) {
+            const content = await fs.readFile(path.join(bundledStatesDir, file), 'utf-8');
+            await fs.writeFile(path.join(statesDir, file), content, 'utf-8');
+          }
+        }
+      } catch (e) {
+        console.log('Could not copy bundled state templates:', e.message);
+      }
+    }
+    
     return { success: true, configDir: userConfigDir };
   } catch (error) {
     return { success: false, error: error.message, configDir: userConfigDir };

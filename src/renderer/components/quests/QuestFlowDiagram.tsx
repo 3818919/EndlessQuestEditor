@@ -3,7 +3,6 @@ import {
   ReactFlow,
   Node,
   Edge,
-  Controls,
   Background,
   useNodesState,
   useEdgesState,
@@ -688,7 +687,7 @@ export default function QuestFlowDiagram({ quest, onQuestChange, onNavigateToSta
   const handleExportPNG = useCallback(() => {
     if (nodes.length === 0) return;
 
-    // Calculate bounds of all nodes
+    // Calculate bounds of all nodes with extra space for edges
     const nodesBounds = nodes.reduce(
       (bounds, node) => ({
         x: Math.min(bounds.x, node.position.x),
@@ -699,28 +698,267 @@ export default function QuestFlowDiagram({ quest, onQuestChange, onNavigateToSta
       { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity }
     );
 
-    const width = nodesBounds.x2 - nodesBounds.x;
-    const height = nodesBounds.y2 - nodesBounds.y;
+    const contentWidth = nodesBounds.x2 - nodesBounds.x;
+    const contentHeight = nodesBounds.y2 - nodesBounds.y;
     const padding = 100;
+    const exportWidth = contentWidth + padding * 2;
+    const exportHeight = contentHeight + padding * 2;
 
-    const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!viewport) return;
+    // Store current viewport state
+    const currentViewport = reactFlowInstance.current?.getViewport();
 
-    toPng(viewport, {
-      backgroundColor: 'var(--bg-secondary)',
-      width: width + padding * 2,
-      height: height + padding * 2,
-      style: {
-        transform: `translate(${-nodesBounds.x + padding}px, ${-nodesBounds.y + padding}px)`,
-      },
-    }).then((dataUrl) => {
-      const link = document.createElement('a');
-      link.download = `${quest.questName || 'quest'}-diagram.png`;
-      link.href = dataUrl;
-      link.click();
-    }).catch((error) => {
-      console.error('Failed to export PNG:', error);
-    });
+    // Set viewport to show all content at scale 1, positioned for export
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.setViewport({
+        x: -nodesBounds.x + padding,
+        y: -nodesBounds.y + padding,
+        zoom: 1
+      });
+    }
+
+    // Small delay to let the viewport update and render edges
+    setTimeout(() => {
+      // Get the React Flow wrapper element (contains viewport with nodes AND edges)
+      const reactFlowWrapper = document.querySelector('.react-flow') as HTMLElement;
+      if (!reactFlowWrapper) return;
+
+      // Get computed background color (resolve CSS variable)
+      const rootStyle = getComputedStyle(document.documentElement);
+      const bgColor = rootStyle.getPropertyValue('--bg-secondary').trim() || '#252526';
+
+      // Inline SVG styles to fix CSS variable issues with html-to-image
+      // Store original styles so we can restore them
+      const svgElements = reactFlowWrapper.querySelectorAll('svg path, svg line, svg polyline, svg marker path');
+      const originalStyles: { element: Element; stroke: string; fill: string; markerEnd: string }[] = [];
+      
+      svgElements.forEach((el) => {
+        const element = el as SVGElement;
+        const computedStyle = getComputedStyle(element);
+        const stroke = computedStyle.stroke;
+        const fill = computedStyle.fill;
+        
+        // Store original inline styles
+        originalStyles.push({
+          element: el,
+          stroke: element.style.stroke,
+          fill: element.style.fill,
+          markerEnd: element.style.markerEnd || ''
+        });
+        
+        // Apply computed styles inline (this resolves CSS variables)
+        if (stroke && stroke !== 'none') {
+          element.style.stroke = stroke;
+        }
+        if (fill && fill !== 'none') {
+          element.style.fill = fill;
+        }
+      });
+
+      // Also fix marker colors (arrowheads)
+      const markers = reactFlowWrapper.querySelectorAll('marker');
+      const markerOriginalStyles: { element: Element; fill: string; stroke: string }[] = [];
+      markers.forEach((marker) => {
+        const path = marker.querySelector('path, polyline');
+        if (path) {
+          const pathEl = path as SVGElement;
+          const computedStyle = getComputedStyle(pathEl);
+          markerOriginalStyles.push({
+            element: path,
+            fill: pathEl.style.fill,
+            stroke: pathEl.style.stroke
+          });
+          // Markers typically use fill for the arrow color
+          if (computedStyle.fill && computedStyle.fill !== 'none') {
+            pathEl.style.fill = computedStyle.fill;
+          }
+          if (computedStyle.stroke && computedStyle.stroke !== 'none') {
+            pathEl.style.stroke = computedStyle.stroke;
+          }
+        }
+      });
+
+      // Fix edge label backgrounds and text colors
+      const edgeLabels = reactFlowWrapper.querySelectorAll('.react-flow__edge-textwrapper, .react-flow__edge-text, .react-flow__edgelabel-renderer');
+      const labelOriginalStyles: { element: HTMLElement; bg: string; color: string; fill: string }[] = [];
+      edgeLabels.forEach((label) => {
+        const el = label as HTMLElement;
+        const computedStyle = getComputedStyle(el);
+        labelOriginalStyles.push({
+          element: el,
+          bg: el.style.background || el.style.backgroundColor,
+          color: el.style.color,
+          fill: el.style.fill
+        });
+        // Inline the computed background and text colors
+        if (computedStyle.backgroundColor) {
+          el.style.backgroundColor = computedStyle.backgroundColor;
+        }
+        if (computedStyle.color) {
+          el.style.color = computedStyle.color;
+        }
+        if (computedStyle.fill) {
+          el.style.fill = computedStyle.fill;
+        }
+      });
+
+      // Fix SVG text elements (edge labels rendered as SVG)
+      const svgTexts = reactFlowWrapper.querySelectorAll('svg text, svg tspan');
+      const textOriginalStyles: { element: SVGElement; fill: string }[] = [];
+      svgTexts.forEach((text) => {
+        const el = text as SVGElement;
+        const computedStyle = getComputedStyle(el);
+        textOriginalStyles.push({
+          element: el,
+          fill: el.style.fill
+        });
+        if (computedStyle.fill) {
+          el.style.fill = computedStyle.fill;
+        }
+      });
+
+      // Fix SVG rect elements (label backgrounds)
+      const svgRects = reactFlowWrapper.querySelectorAll('svg rect');
+      const rectOriginalStyles: { element: SVGElement; fill: string; fillOpacity: string }[] = [];
+      svgRects.forEach((rect) => {
+        const el = rect as SVGElement;
+        const computedStyle = getComputedStyle(el);
+        rectOriginalStyles.push({
+          element: el,
+          fill: el.style.fill,
+          fillOpacity: el.style.fillOpacity
+        });
+        if (computedStyle.fill) {
+          el.style.fill = computedStyle.fill;
+        }
+        if (computedStyle.fillOpacity) {
+          el.style.fillOpacity = computedStyle.fillOpacity;
+        }
+      });
+
+      // Temporarily hide scrollbars and overflow on all elements
+      reactFlowWrapper.classList.add('export-mode');
+      
+      // Add temporary style to hide scrollbars and fix overflow during export
+      const style = document.createElement('style');
+      style.id = 'export-style';
+      style.textContent = `
+        .export-mode, .export-mode * {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+          overflow: visible !important;
+        }
+        .export-mode::-webkit-scrollbar,
+        .export-mode *::-webkit-scrollbar {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
+          background: transparent !important;
+        }
+        .export-mode .react-flow__node > div {
+          overflow: visible !important;
+          max-height: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+
+      toPng(reactFlowWrapper, {
+        backgroundColor: bgColor,
+        width: exportWidth,
+        height: exportHeight,
+        style: {
+          width: `${exportWidth}px`,
+          height: `${exportHeight}px`,
+        },
+        filter: (node) => {
+          // Filter out panels, controls, minimap, and background dots
+          if (node.classList) {
+            if (node.classList.contains('react-flow__panel') ||
+                node.classList.contains('react-flow__controls') ||
+                node.classList.contains('react-flow__minimap') ||
+                node.classList.contains('react-flow__background')) {
+              return false;
+            }
+          }
+          return true;
+        },
+        pixelRatio: 2, // Higher quality export
+      }).then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = `${quest.questName || 'quest'}-diagram.png`;
+        link.href = dataUrl;
+        link.click();
+
+        // Cleanup - restore original styles
+        originalStyles.forEach(({ element, stroke, fill, markerEnd }) => {
+          const el = element as SVGElement;
+          el.style.stroke = stroke;
+          el.style.fill = fill;
+          el.style.markerEnd = markerEnd;
+        });
+        markerOriginalStyles.forEach(({ element, fill, stroke }) => {
+          const el = element as SVGElement;
+          el.style.fill = fill;
+          el.style.stroke = stroke;
+        });
+        labelOriginalStyles.forEach(({ element, bg, color, fill }) => {
+          element.style.background = bg;
+          element.style.backgroundColor = bg;
+          element.style.color = color;
+          element.style.fill = fill;
+        });
+        textOriginalStyles.forEach(({ element, fill }) => {
+          element.style.fill = fill;
+        });
+        rectOriginalStyles.forEach(({ element, fill, fillOpacity }) => {
+          element.style.fill = fill;
+          element.style.fillOpacity = fillOpacity;
+        });
+        
+        reactFlowWrapper.classList.remove('export-mode');
+        document.getElementById('export-style')?.remove();
+
+        // Restore original viewport
+        if (currentViewport && reactFlowInstance.current) {
+          reactFlowInstance.current.setViewport(currentViewport);
+        }
+      }).catch((error) => {
+        console.error('Failed to export PNG:', error);
+        
+        // Cleanup on error - restore original styles
+        originalStyles.forEach(({ element, stroke, fill, markerEnd }) => {
+          const el = element as SVGElement;
+          el.style.stroke = stroke;
+          el.style.fill = fill;
+          el.style.markerEnd = markerEnd;
+        });
+        markerOriginalStyles.forEach(({ element, fill, stroke }) => {
+          const el = element as SVGElement;
+          el.style.fill = fill;
+          el.style.stroke = stroke;
+        });
+        labelOriginalStyles.forEach(({ element, bg, color, fill }) => {
+          element.style.background = bg;
+          element.style.backgroundColor = bg;
+          element.style.color = color;
+          element.style.fill = fill;
+        });
+        textOriginalStyles.forEach(({ element, fill }) => {
+          element.style.fill = fill;
+        });
+        rectOriginalStyles.forEach(({ element, fill, fillOpacity }) => {
+          element.style.fill = fill;
+          element.style.fillOpacity = fillOpacity;
+        });
+        
+        reactFlowWrapper.classList.remove('export-mode');
+        document.getElementById('export-style')?.remove();
+        
+        // Restore original viewport on error
+        if (currentViewport && reactFlowInstance.current) {
+          reactFlowInstance.current.setViewport(currentViewport);
+        }
+      });
+    }, 150);
   }, [nodes, quest.questName]);
 
   return (
@@ -793,7 +1031,6 @@ export default function QuestFlowDiagram({ quest, onQuestChange, onNavigateToSta
         }}
       >
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="var(--border-secondary)" />
-        <Controls />
       </ReactFlow>
 
       {/* State Editor Modal */}

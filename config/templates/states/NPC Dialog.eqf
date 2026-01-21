@@ -1,0 +1,8 @@
+	desc	"Talk to NPC"
+
+	action	AddNpcText(QUEST_ID, "Hello adventurer!");
+	action	AddNpcInput(QUEST_ID, 1, "Continue");
+	action	AddNpcInput(QUEST_ID, 2, "Leave");
+
+	rule	InputNpc(1) goto NextState
+	rule	InputNpc(2) goto Restart

@@ -25,31 +25,44 @@ export const eqfLanguageConfig = {
   ],
 };
 
-// Default actions/rules if config not loaded
+// Default actions/rules if config not loaded (matches config/actions.ini and config/rules.ini)
 const DEFAULT_ACTIONS = [
-  'AddNpcText', 'AddNpcInput', 'AddNpcChat', 'AddNpcPM', 'GiveItem', 'RemoveItem',
-  'GiveExp', 'GiveBankItem', 'RemoveBankItem', 'SetClass', 'SetRace', 'SetState',
-  'ShowHint', 'PlaySound', 'PlayEffect', 'PlayMusic', 'Reset', 'End', 'SetCoord',
-  'SetMap', 'Quake', 'QuakeWorld', 'SetHome', 'SetTitle', 'GiveKarma', 'RemoveKarma',
-  'AddKillNpc', 'RemoveKillNpc', 'ResetKillNpc', 'StartQuest', 'ResetQuest'
+  'AddNpcText', 'AddNpcInput', 'AddNpcChat', 'AddNpcPM', 'Roll', 'GiveItem', 'RemoveItem',
+  'GiveExp', 'ShowHint', 'PlaySound', 'SetCoord', 'Quake', 'QuakeWorld', 'SetClass',
+  'SetRace', 'SetHome', 'SetTitle', 'GiveKarma', 'RemoveKarma', 'StartQuest',
+  'SetQuestState', 'ResetQuest', 'GiveStat', 'RemoveStat', 'ResetDaily', 'Reset', 'End'
 ];
 
 const DEFAULT_RULES = [
-  'Always', 'TalkedToNpc', 'InputNpc', 'KilledNpcs', 'KilledPlayers', 'GotItems',
-  'LostItems', 'EnterCoord', 'LeaveCoord', 'EnterMap', 'LeaveMap', 'EnterArea',
-  'LeaveArea', 'IsClass', 'IsRace', 'IsGender', 'IsNamed', 'CitizenOf', 'GotSpell',
-  'LostSpell', 'UsedItem', 'UsedSpell', 'IsWearing', 'NotWearing', 'Unequipped',
-  'Stepped', 'Die', 'TimeElapsed', 'WaitMinutes', 'WaitSeconds', 'FinishedQuest',
-  'Disconnected'
+  'TalkedToNpc', 'InputNpc', 'Rolled', 'KilledNpcs', 'KilledPlayers', 'GotItems',
+  'LostItems', 'UsedItem', 'EnterCoord', 'LeaveCoord', 'EnterMap', 'LeaveMap',
+  'IsClass', 'IsRace', 'IsGender', 'CitizenOf', 'GotSpell', 'LostSpell', 'UsedSpell',
+  'IsWearing', 'StatGreater', 'StatLess', 'StatIs', 'StatNot', 'StatBetween',
+  'StatRpn', 'DoneDaily', 'Always'
+];
+
+// Default stats for syntax highlighting
+const DEFAULT_STATS = [
+  'level', 'exp', 'str', 'int', 'wis', 'agi', 'con', 'cha',
+  'statpoints', 'skillpoints', 'admin', 'gender', 'hairstyle',
+  'haircolor', 'race', 'guildrank', 'karma', 'class'
 ];
 
 function createTokensProvider(actions: string[], rules: string[]) {
+  // Create regex patterns for actions and rules
+  // These will match the function names followed by opening parenthesis
+  const actionsPattern = actions.length > 0 
+    ? new RegExp(`\\b(${actions.join('|')})(?=\\s*\\()`)
+    : /(?!)/; // Never match if no actions
+  
+  const rulesPattern = rules.length > 0
+    ? new RegExp(`\\b(${rules.join('|')})(?=\\s*\\()`)
+    : /(?!)/; // Never match if no rules
+
   return {
     keywords: [
       'Main', 'State', 'random', 'action', 'rule', 'goto', 'desc',
-      'questname', 'version', 'hidden', 'hidden_end', 'disabled',
-      'minlevel', 'maxlevel', 'needadmin', 'adminreq', 'needclass',
-      'classreq', 'needquest', 'questreq', 'startnpc', 'coord', 'item'
+      'questname', 'version', 'hidden', 'hidden_end', 'disabled'
     ],
     
     actions: actions,
@@ -59,12 +72,7 @@ function createTokensProvider(actions: string[], rules: string[]) {
     operators: [',', ';'],
     
     // Stat keywords
-    stats: [
-      'accuracy', 'agi', 'armor', 'cha', 'con', 'base_agi', 'base_cha', 'base_con',
-      'base_int', 'base_str', 'base_wis', 'evade', 'exp', 'goldbank', 'hp', 'int',
-      'level', 'mapid', 'maxhp', 'maxtp', 'maxsp', 'maxdam', 'maxweight', 'mindam',
-      'skillpoints', 'statpoints', 'str', 'tp', 'weight', 'wis', 'x', 'y'
-    ],
+    stats: DEFAULT_STATS,
 
     tokenizer: {
       root: [
@@ -72,21 +80,19 @@ function createTokensProvider(actions: string[], rules: string[]) {
         [/\/\/.*$/, 'comment'],
         
         // Keywords (case-insensitive)
-        [/\b(?:Main|State|random)\b/i, 'keyword.control'],
+        [/\b(?:state)\b/i, 'keyword.state'],
+        [/\b(?:Main|random)\b/i, 'keyword.control'],
         [/\b(?:action|rule|goto|desc|coord|item)\b/i, 'keyword'],
         [/\b(?:questname|version|hidden|hidden_end|disabled|minlevel|maxlevel|needadmin|adminreq|needclass|classreq|needquest|questreq|startnpc)\b/i, 'keyword.declaration'],
         
-        // Actions - match function-like syntax
-        [/\b[A-Z][a-zA-Z]*(?=\s*\()/, {
-          cases: {
-            '@actions': 'support.function.action',
-            '@rules': 'support.function.rule',
-            '@default': 'identifier'
-          }
-        }],
+        // Actions - explicitly match action names from config
+        [actionsPattern, 'support.function.action'],
         
-        // Stats
-        [/\b(?:accuracy|agi|armor|cha|con|base_agi|base_cha|base_con|base_int|base_str|base_wis|evade|exp|goldbank|hp|int|level|mapid|maxhp|maxtp|maxsp|maxdam|maxweight|mindam|skillpoints|statpoints|str|tp|weight|wis|x|y)\b/i, 'variable.language'],
+        // Rules - explicitly match rule names from config
+        [rulesPattern, 'support.function.rule'],
+        
+        // Stats - dynamically create pattern from DEFAULT_STATS
+        [new RegExp(`\\b(?:${DEFAULT_STATS.join('|')})\\b`, 'i'), 'variable.language'],
         
         // Strings
         [/"([^"\\]|\\.)*$/, 'string.invalid'],
@@ -171,6 +177,7 @@ export function registerEQFLanguage(monaco: any, config?: ConfigData | null) {
       { token: 'comment', foreground: '6A9955' },
       { token: 'keyword', foreground: 'C586C0' },
       { token: 'keyword.control', foreground: 'C586C0', fontStyle: 'bold' },
+      { token: 'keyword.state', foreground: '569CD6' },
       { token: 'keyword.declaration', foreground: '569CD6' },
       { token: 'support.function.action', foreground: 'DCDCAA' },
       { token: 'support.function.rule', foreground: '4EC9B0' },
@@ -200,6 +207,7 @@ export function registerEQFLanguage(monaco: any, config?: ConfigData | null) {
       { token: 'comment', foreground: '008000' },
       { token: 'keyword', foreground: 'AF00DB' },
       { token: 'keyword.control', foreground: 'AF00DB', fontStyle: 'bold' },
+      { token: 'keyword.state', foreground: '0000FF' },
       { token: 'keyword.declaration', foreground: '0000FF' },
       { token: 'support.function.action', foreground: '795E26' },
       { token: 'support.function.rule', foreground: '267F99' },

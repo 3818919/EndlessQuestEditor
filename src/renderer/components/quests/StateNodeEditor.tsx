@@ -3,7 +3,8 @@ import { QuestState, QuestAction, QuestRule } from '../../../eqf-parser';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { loadConfig, ConfigData } from '../../services/configService';
+import { loadConfig, ConfigData, ParamInfo } from '../../services/configService';
+import { loadStateTemplates, StateTemplateData } from '../../services/stateTemplateService';
 
 interface StateNodeEditorProps {
   state: QuestState;
@@ -15,106 +16,90 @@ interface StateNodeEditorProps {
   onCreateState?: (stateName: string) => void;
 }
 
-// Default action/rule types if config not loaded
+// Default action/rule types if config not loaded (matches config/actions.ini and config/rules.ini)
 const DEFAULT_ACTION_TYPES = [
-  'AddNpcText', 'AddNpcInput', 'AddNpcChat', 'AddNpcPM', 'Reset', 'End', 'SetState',
-  'GiveItem', 'RemoveItem', 'GiveExp', 'GiveBankItem', 'RemoveBankItem',
-  'SetClass', 'SetRace', 'ShowHint', 'PlaySound', 'PlayEffect', 'PlayMusic',
-  'SetCoord', 'SetMap', 'Quake', 'QuakeWorld', 'SetHome', 'SetTitle',
-  'GiveKarma', 'RemoveKarma', 'AddKillNpc', 'RemoveKillNpc', 'ResetKillNpc',
-  'StartQuest', 'ResetQuest'
+  'AddNpcText', 'AddNpcInput', 'AddNpcChat', 'AddNpcPM', 'Roll', 'GiveItem', 'RemoveItem',
+  'GiveExp', 'ShowHint', 'PlaySound', 'SetCoord', 'Quake', 'QuakeWorld', 'SetClass',
+  'SetRace', 'SetHome', 'SetTitle', 'GiveKarma', 'RemoveKarma', 'StartQuest',
+  'SetQuestState', 'ResetQuest', 'GiveStat', 'RemoveStat', 'ResetDaily', 'Reset', 'End'
 ];
 
 const DEFAULT_RULE_TYPES = [
-  'Always', 'TalkedToNpc', 'InputNpc', 'KilledNpcs', 'KilledPlayers',
-  'GotItems', 'LostItems', 'EnterCoord', 'LeaveCoord', 'EnterMap', 'LeaveMap',
-  'EnterArea', 'LeaveArea', 'IsClass', 'IsRace', 'IsGender', 'IsNamed',
-  'CitizenOf', 'GotSpell', 'LostSpell', 'UsedItem', 'UsedSpell',
-  'IsWearing', 'NotWearing', 'Unequipped', 'Stepped', 'Die',
-  'TimeElapsed', 'WaitMinutes', 'WaitSeconds', 'FinishedQuest', 'Disconnected'
+  'TalkedToNpc', 'InputNpc', 'Rolled', 'KilledNpcs', 'KilledPlayers', 'GotItems',
+  'LostItems', 'UsedItem', 'EnterCoord', 'LeaveCoord', 'EnterMap', 'LeaveMap',
+  'IsClass', 'IsRace', 'IsGender', 'CitizenOf', 'GotSpell', 'LostSpell', 'UsedSpell',
+  'IsWearing', 'StatGreater', 'StatLess', 'StatIs', 'StatNot', 'StatBetween',
+  'StatRpn', 'DoneDaily', 'Always'
 ];
 
-// Parameter configuration for actions (fallback)
+// Parameter configuration for actions (fallback - matches config/actions.ini)
 const DEFAULT_ACTION_PARAMS: Record<string, string[]> = {
-  AddNpcText: ['NPC ID', 'Text to display'],
-  AddNpcInput: ['NPC ID', 'Input ID', 'Text to display'],
-  AddNpcChat: ['NPC ID', 'Chat message'],
-  AddNpcPM: ['Name', 'Private message'],
-  GiveItem: ['Item ID', 'Amount'],
-  RemoveItem: ['Item ID', 'Amount'],
-  GiveExp: ['Amount'],
-  GiveBankItem: ['Item ID', 'Amount'],
-  RemoveBankItem: ['Item ID', 'Amount'],
-  SetClass: ['Class ID'],
-  SetRace: ['Race ID'],
-  SetState: ['State name'],
-  ShowHint: ['Hint message'],
-  PlaySound: ['Sound ID'],
-  PlayEffect: ['Effect ID'],
-  PlayMusic: ['Music ID'],
+  AddNpcText: ['npcQuestId', 'message'],
+  AddNpcInput: ['npcQuestId', 'inputId', 'message'],
+  AddNpcChat: ['npcQuestId', 'message'],
+  AddNpcPM: ['npcQuestId', 'message'],
+  Roll: ['amount'],
+  GiveItem: ['itemId', 'amount'],
+  RemoveItem: ['itemId', 'amount'],
+  GiveExp: ['amount'],
+  ShowHint: ['message'],
+  PlaySound: ['soundId'],
+  SetCoord: ['mapId', 'x', 'y'],
+  Quake: ['magnitude'],
+  QuakeWorld: ['magnitude'],
+  SetClass: ['classId'],
+  SetRace: ['raceId'],
+  SetHome: ['home'],
+  SetTitle: ['title'],
+  GiveKarma: ['amount'],
+  RemoveKarma: ['amount'],
+  StartQuest: ['questId', 'quest state'],
+  SetQuestState: ['questId', 'quest state'],
+  ResetQuest: ['questId'],
+  GiveStat: ['stat', 'amount'],
+  RemoveStat: ['stat', 'amount'],
+  ResetDaily: [],
   Reset: [],
-  End: [],
-  SetCoord: ['Map ID', 'X', 'Y'],
-  SetMap: ['Map ID', 'X', 'Y'],
-  Quake: ['Magnitude', 'Map ID (optional)'],
-  QuakeWorld: ['Magnitude'],
-  SetHome: ['Home town'],
-  SetTitle: ['Title'],
-  GiveKarma: ['Amount'],
-  RemoveKarma: ['Amount'],
-  AddKillNpc: ['NPC ID'],
-  RemoveKillNpc: ['NPC ID'],
-  ResetKillNpc: ['NPC ID'],
-  StartQuest: ['Quest ID'],
-  ResetQuest: ['Quest ID']
+  End: []
 };
 
-// Parameter configuration for rules (fallback)
+// Parameter configuration for rules (fallback - matches config/rules.ini)
 const DEFAULT_RULE_PARAMS: Record<string, string[]> = {
-  Always: [],
-  TalkedToNpc: ['NPC ID'],
-  InputNpc: ['Input ID'],
-  KilledNpcs: ['NPC ID', 'Amount'],
-  KilledPlayers: ['Amount'],
-  GotItems: ['Item ID', 'Amount'],
-  LostItems: ['Item ID', 'Amount'],
-  EnterCoord: ['Map ID', 'X', 'Y'],
-  LeaveCoord: ['Map ID', 'X', 'Y'],
-  EnterMap: ['Map ID'],
-  LeaveMap: ['Map ID'],
-  EnterArea: ['Map ID', 'X', 'Y', 'Radius'],
-  LeaveArea: ['Map ID', 'X', 'Y', 'Radius'],
-  IsClass: ['Class ID'],
-  IsRace: ['Race ID'],
-  IsGender: ['Gender ID (0=male, 1=female)'],
-  IsNamed: ['Player name'],
-  CitizenOf: ['Home town'],
-  GotSpell: ['Spell ID'],
-  LostSpell: ['Spell ID'],
-  UsedItem: ['Item ID', 'Amount'],
-  UsedSpell: ['Spell ID', 'Amount'],
-  IsWearing: ['Item ID'],
-  NotWearing: ['Item ID'],
-  Unequipped: [],
-  Stepped: ['Amount'],
-  Die: ['Count (optional)'],
-  TimeElapsed: ['Time (e.g., "30m", "2h")'],
-  WaitMinutes: ['Minutes'],
-  WaitSeconds: ['Seconds'],
-  FinishedQuest: ['Quest ID'],
-  Disconnected: []
+  TalkedToNpc: ['npcQuestId'],
+  InputNpc: ['inputId'],
+  Rolled: ['roll'],
+  KilledNpcs: ['npcId', 'amount'],
+  KilledPlayers: ['amount'],
+  GotItems: ['itemId', 'amount'],
+  LostItems: ['itemId', 'amount'],
+  UsedItem: ['itemId', 'amount'],
+  EnterCoord: ['mapId', 'x', 'y'],
+  LeaveCoord: ['mapId', 'x', 'y'],
+  EnterMap: ['mapId'],
+  LeaveMap: ['mapId'],
+  IsClass: ['classId'],
+  IsRace: ['raceId'],
+  IsGender: ['genderId'],
+  CitizenOf: ['homeName'],
+  GotSpell: ['spellId'],
+  LostSpell: ['spellId'],
+  UsedSpell: ['spellId', 'amount'],
+  IsWearing: ['itemId'],
+  StatGreater: ['statName', 'value'],
+  StatLess: ['statName', 'value'],
+  StatIs: ['statName', 'value'],
+  StatNot: ['statName', 'value'],
+  StatBetween: ['statName', 'low_value', 'high_value'],
+  StatRpn: ['Reverse Polish Notion Formula'],
+  DoneDaily: ['value'],
+  Always: []
 };
 
-// Parse parameter names from signature like `ActionName(param1, param2)`
-function parseParamsFromSignature(signature: string): string[] {
-  const match = signature.match(/\(([^)]*)\)/);
-  if (!match || !match[1].trim()) return [];
-  
-  // Split by comma and clean up
-  return match[1].split(',').map(p => {
-    // Remove backticks, quotes, and trim
-    return p.replace(/[`"']/g, '').trim();
-  }).filter(p => p.length > 0);
+// Check if signature includes a semicolon at the end (for actions)
+function signatureHasSemicolon(signature: string): boolean {
+  // Remove backticks and check for semicolon
+  const clean = signature.replace(/`/g, '').trim();
+  return clean.endsWith(';');
 }
 
 export default function StateNodeEditor({ state, stateIndex, originalStateName, allStates, onClose, onSave, onCreateState }: StateNodeEditorProps) {
@@ -128,11 +113,14 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
   const [config, setConfig] = useState<ConfigData | null>(null);
   const [actionTypes, setActionTypes] = useState<string[]>(DEFAULT_ACTION_TYPES);
   const [ruleTypes, setRuleTypes] = useState<string[]>(DEFAULT_RULE_TYPES);
-  const [actionParams, setActionParams] = useState<Record<string, string[]>>(DEFAULT_ACTION_PARAMS);
-  const [ruleParams, setRuleParams] = useState<Record<string, string[]>>(DEFAULT_RULE_PARAMS);
+  const [actionParams, setActionParams] = useState<Record<string, ParamInfo[]>>({});
+  const [ruleParams, setRuleParams] = useState<Record<string, ParamInfo[]>>({});
+  const [actionHasSemicolon, setActionHasSemicolon] = useState<Record<string, boolean>>({});
+  const [stateTemplates, setStateTemplates] = useState<Record<string, StateTemplateData>>({});
 
-  // Load config on mount
+  // Load config and state templates on mount
   useEffect(() => {
+    // Load config
     loadConfig().then(loadedConfig => {
       setConfig(loadedConfig);
       
@@ -141,12 +129,15 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
         const types = Object.keys(loadedConfig.actions);
         setActionTypes(types);
         
-        // Build params from signatures
-        const params: Record<string, string[]> = {};
+        // Build params from config (already parsed)
+        const params: Record<string, ParamInfo[]> = {};
+        const semicolons: Record<string, boolean> = {};
         for (const [name, data] of Object.entries(loadedConfig.actions)) {
-          params[name] = parseParamsFromSignature(data.signature);
+          params[name] = data.params;
+          semicolons[name] = signatureHasSemicolon(data.rawSignature);
         }
         setActionParams(params);
+        setActionHasSemicolon(semicolons);
       }
       
       // Extract rule types and params from config
@@ -154,29 +145,59 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
         const types = Object.keys(loadedConfig.rules);
         setRuleTypes(types);
         
-        // Build params from signatures
-        const params: Record<string, string[]> = {};
+        // Build params from config (already parsed)
+        const params: Record<string, ParamInfo[]> = {};
         for (const [name, data] of Object.entries(loadedConfig.rules)) {
-          params[name] = parseParamsFromSignature(data.signature);
+          params[name] = data.params;
         }
         setRuleParams(params);
       }
+    });
+    
+    // Load state templates
+    loadStateTemplates().then(templates => {
+      setStateTemplates(templates);
     });
   }, []);
 
   // Helper function to generate rawText for an action
   const generateActionRawText = (action: QuestAction): string => {
-    const paramsStr = action.params.map(p => 
-      typeof p === 'string' ? `"${p}"` : p
-    ).join(', ');
-    return `${action.type}(${paramsStr})`;
+    // Get param info to determine which params should be strings
+    const paramInfos = actionParams[action.type] || [];
+    
+    const paramsStr = action.params.map((p, idx) => {
+      const paramInfo = paramInfos[idx];
+      // If param info says it's a string type, wrap in quotes
+      // Otherwise, if it's already a string but should be an integer, don't wrap
+      if (paramInfo?.type === 'string') {
+        return `"${p}"`;
+      } else {
+        // It's an integer type - return as-is (no quotes)
+        return p;
+      }
+    }).join(', ');
+    
+    // Check if this action type should have a semicolon
+    const hasSemicolon = actionHasSemicolon[action.type] ?? true; // Default to true
+    return `${action.type}(${paramsStr})${hasSemicolon ? ';' : ''}`;
   };
 
   // Helper function to generate rawText for a rule
   const generateRuleRawText = (rule: QuestRule): string => {
-    const paramsStr = rule.params.map(p => 
-      typeof p === 'string' ? `"${p}"` : p
-    ).join(', ');
+    // Get param info to determine which params should be strings
+    const paramInfos = ruleParams[rule.type] || [];
+    
+    const paramsStr = rule.params.map((p, idx) => {
+      const paramInfo = paramInfos[idx];
+      // If param info says it's a string type, wrap in quotes
+      if (paramInfo?.type === 'string') {
+        return `"${p}"`;
+      } else {
+        // It's an integer type - return as-is (no quotes)
+        return p;
+      }
+    }).join(', ');
+    
     return `${rule.type}(${paramsStr}) goto ${rule.gotoState}`;
   };
 
@@ -189,9 +210,9 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
   const handleAddAction = () => {
     const defaultType = actionTypes[0] || 'AddNpcText';
     const paramConfig = actionParams[defaultType] || [];
-    const newAction = { 
+    const newAction: QuestAction = { 
       type: defaultType, 
-      params: paramConfig.map(() => ''), 
+      params: paramConfig.map(p => p.type === 'string' ? '' : 0), 
       rawText: '' 
     };
     newAction.rawText = generateActionRawText(newAction);
@@ -215,7 +236,7 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
     const newActions = [...editedState.actions];
     if (field === 'type') {
       const paramConfig = actionParams[value] || [];
-      newActions[index] = { type: value, params: paramConfig.map(() => ''), rawText: '' };
+      newActions[index] = { type: value, params: paramConfig.map(p => p.type === 'string' ? '' : 0), rawText: '' };
       newActions[index].rawText = generateActionRawText(newActions[index]);
     } else {
       newActions[index] = { ...newActions[index], params: value };
@@ -227,9 +248,9 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
   const handleAddRule = () => {
     const defaultType = ruleTypes[0] || 'Always';
     const paramConfig = ruleParams[defaultType] || [];
-    const newRule = { 
+    const newRule: QuestRule = { 
       type: defaultType, 
-      params: paramConfig.map(() => ''), 
+      params: paramConfig.map(p => p.type === 'string' ? '' : 0), 
       gotoState: '', 
       rawText: '' 
     };
@@ -254,7 +275,7 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
     const newRules = [...editedState.rules];
     if (field === 'type') {
       const paramConfig = ruleParams[value] || [];
-      newRules[index] = { type: value, params: paramConfig.map(() => ''), gotoState: newRules[index].gotoState, rawText: '' };
+      newRules[index] = { type: value, params: paramConfig.map(p => p.type === 'string' ? '' : 0), gotoState: newRules[index].gotoState, rawText: '' };
       newRules[index].rawText = generateRuleRawText(newRules[index]);
     } else if (field === 'gotoState') {
       newRules[index] = { ...newRules[index], gotoState: value };
@@ -270,8 +291,18 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
     if (actionOrRule === 'action') {
       const newActions = [...editedState.actions];
       const newParams = [...newActions[index].params];
-      // Try to parse as number if possible
-      const parsedValue = !isNaN(Number(value)) && value.trim() !== '' ? Number(value) : value;
+      const paramInfos = actionParams[newActions[index].type] || [];
+      const paramInfo = paramInfos[paramIndex];
+      
+      // Parse based on expected type from config
+      let parsedValue: string | number;
+      if (paramInfo?.type === 'string') {
+        parsedValue = value; // Keep as string
+      } else {
+        // Integer type - parse as number, default to 0 if invalid
+        parsedValue = !isNaN(Number(value)) && value.trim() !== '' ? Number(value) : 0;
+      }
+      
       newParams[paramIndex] = parsedValue;
       newActions[index] = { ...newActions[index], params: newParams };
       newActions[index].rawText = generateActionRawText(newActions[index]);
@@ -279,7 +310,18 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
     } else {
       const newRules = [...editedState.rules];
       const newParams = [...newRules[index].params];
-      const parsedValue = !isNaN(Number(value)) && value.trim() !== '' ? Number(value) : value;
+      const paramInfos = ruleParams[newRules[index].type] || [];
+      const paramInfo = paramInfos[paramIndex];
+      
+      // Parse based on expected type from config
+      let parsedValue: string | number;
+      if (paramInfo?.type === 'string') {
+        parsedValue = value; // Keep as string
+      } else {
+        // Integer type - parse as number, default to 0 if invalid
+        parsedValue = !isNaN(Number(value)) && value.trim() !== '' ? Number(value) : 0;
+      }
+      
       newParams[paramIndex] = parsedValue;
       newRules[index] = { ...newRules[index], params: newParams };
       newRules[index].rawText = generateRuleRawText(newRules[index]);
@@ -387,6 +429,61 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
             }}
           />
         </div>
+
+        {/* State Templates Section */}
+        {Object.keys(stateTemplates).length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              fontWeight: 500,
+              color: 'var(--text-primary)'
+            }}>
+              State Templates
+            </label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  const templateName = e.target.value;
+                  if (templateName && stateTemplates[templateName]) {
+                    const template = stateTemplates[templateName];
+                    setEditedState({
+                      ...editedState,
+                      description: template.description || editedState.description,
+                      actions: [...template.actions],
+                      rules: [...template.rules]
+                    });
+                    // Reset the select
+                    e.target.value = '';
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  backgroundColor: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">-- Apply State Template --</option>
+                {Object.keys(stateTemplates).map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+              <span style={{ 
+                fontSize: '11px', 
+                color: 'var(--text-tertiary)',
+                fontStyle: 'italic'
+              }}>
+                Replaces current actions & rules
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Actions Section */}
         <div style={{ marginBottom: '24px' }}>
@@ -496,25 +593,36 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
                     Parameters
                   </label>
                   {action.params.map((param, paramIndex) => {
-                    const paramConfig = actionParams[action.type] || [];
-                    const placeholder = paramConfig[paramIndex] || `Parameter ${paramIndex + 1}`;
+                    const paramInfos = actionParams[action.type] || [];
+                    const paramInfo = paramInfos[paramIndex];
+                    const placeholder = paramInfo?.name || `Parameter ${paramIndex + 1}`;
+                    const isString = paramInfo?.type === 'string';
                     return (
                       <div key={paramIndex} style={{ marginBottom: '4px' }}>
-                        <input
-                          type="text"
-                          value={param}
-                          onChange={(e) => handleParamChange('action', index, paramIndex, e.target.value)}
-                          placeholder={placeholder}
-                          style={{
-                            width: '100%',
-                            padding: '4px 8px',
-                            backgroundColor: 'var(--bg-input)',
-                            color: 'var(--text-primary)',
-                            border: '1px solid var(--border-primary)',
-                            borderRadius: '3px',
-                            fontSize: '12px'
-                          }}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <input
+                            type={isString ? 'text' : 'number'}
+                            value={param}
+                            onChange={(e) => handleParamChange('action', index, paramIndex, e.target.value)}
+                            placeholder={placeholder}
+                            style={{
+                              flex: 1,
+                              padding: '4px 8px',
+                              backgroundColor: 'var(--bg-input)',
+                              color: 'var(--text-primary)',
+                              border: '1px solid var(--border-primary)',
+                              borderRadius: '3px',
+                              fontSize: '12px'
+                            }}
+                          />
+                          <span style={{ 
+                            fontSize: '10px', 
+                            color: 'var(--text-tertiary)',
+                            minWidth: '40px'
+                          }}>
+                            {isString ? 'text' : 'int'}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
@@ -696,25 +804,36 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
                     Parameters
                   </label>
                   {rule.params.map((param, paramIndex) => {
-                    const paramConfig = ruleParams[rule.type] || [];
-                    const placeholder = paramConfig[paramIndex] || `Parameter ${paramIndex + 1}`;
+                    const paramInfos = ruleParams[rule.type] || [];
+                    const paramInfo = paramInfos[paramIndex];
+                    const placeholder = paramInfo?.name || `Parameter ${paramIndex + 1}`;
+                    const isString = paramInfo?.type === 'string';
                     return (
                       <div key={paramIndex} style={{ marginBottom: '4px' }}>
-                        <input
-                          type="text"
-                          value={param}
-                          onChange={(e) => handleParamChange('rule', index, paramIndex, e.target.value)}
-                          placeholder={placeholder}
-                          style={{
-                            width: '100%',
-                            padding: '4px 8px',
-                            backgroundColor: 'var(--bg-input)',
-                            color: 'var(--text-primary)',
-                            border: '1px solid var(--border-primary)',
-                            borderRadius: '3px',
-                            fontSize: '12px'
-                          }}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <input
+                            type={isString ? 'text' : 'number'}
+                            value={param}
+                            onChange={(e) => handleParamChange('rule', index, paramIndex, e.target.value)}
+                            placeholder={placeholder}
+                            style={{
+                              flex: 1,
+                              padding: '4px 8px',
+                              backgroundColor: 'var(--bg-input)',
+                              color: 'var(--text-primary)',
+                              border: '1px solid var(--border-primary)',
+                              borderRadius: '3px',
+                              fontSize: '12px'
+                            }}
+                          />
+                          <span style={{ 
+                            fontSize: '10px', 
+                            color: 'var(--text-tertiary)',
+                            minWidth: '40px'
+                          }}>
+                            {isString ? 'text' : 'int'}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
