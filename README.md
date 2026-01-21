@@ -100,7 +100,7 @@ npm run dev
 
 ### Pre-built Releases
 
-Download the latest release for your platform from the [Releases](https://github.com/your-username/endless-quest-writer/releases) page:
+Download the latest release for your platform from the [Releases](https://github.com/3818919/EndlessQuestEditor/releases) page:
 
 - **Windows**: `.exe` installer
 - **macOS**: `.dmg` disk image
