@@ -62,7 +62,7 @@
 ### 🔧 Customization
 - **External Config Files** — Actions and rules defined in editable `.ini` files
 - **Custom Templates** — Add your own quest templates as `.eqf` files
-- **User Directory** — Config files stored in `~/.endless-quest-writer/config/`
+- **User Directory** — Config files stored in `~/.EndlessQuestWriter/config/`
 - **Hot Reload** — Changes take effect on next application launch
 
 ### 🎯 Project System
@@ -89,7 +89,7 @@
 ```bash
 # Clone the repository
 git clone https://github.com/3818919/EndlessQuestWriter.git
-cd endless-quest-writer
+cd EndlessQuestWriter
 
 # Install dependencies
 npm install
@@ -149,9 +149,9 @@ On first launch, default configuration files are copied to your user directory:
 
 | Platform | Location |
 |----------|----------|
-| Linux | `~/.endless-quest-writer/config/` |
-| macOS | `~/.endless-quest-writer/config/` |
-| Windows | `C:\Users\<username>\.endless-quest-writer\config\` |
+| Linux | `~/.EndlessQuestWriter/config/` |
+| macOS | `~/.EndlessQuestWriter/config/` |
+| Windows | `C:\Users\<username>\.EndlessQuestWriter\config\` |
 
 ### actions.ini
 
@@ -186,7 +186,7 @@ description = Satisfied when the player has the specified items.
 Add custom quest templates as `.eqf` files:
 
 ```
-~/.endless-quest-writer/config/templates/
+~/.EndlessQuestWriter/config/templates/
 ├── Delivery Quest.eqf
 ├── Empty Quest.eqf
 ├── Fetch Quest.eqf
