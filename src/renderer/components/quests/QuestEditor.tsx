@@ -4,16 +4,19 @@ import QuestTextEditor from './QuestTextEditor';
 import QuestFlowDiagram from './QuestFlowDiagram';
 import { loadTemplates, getTemplateNames } from '../../services/templateService';
 import EditIcon from '@mui/icons-material/Edit';
+import SaveAsIcon from '@mui/icons-material/SaveAs';
 
 interface QuestEditorProps {
   quest: QuestData | null;
   onSave: (questId: number, updates: Partial<QuestData>) => void;
   onExport: (questId: number) => void;
   onDelete: (questId: number) => void;
+  onSaveAsTemplate?: (questId: number, questData: QuestData) => void;
+  isTemplateMode?: boolean;
   theme?: 'dark' | 'light';
 }
 
-export default function QuestEditor({ quest, onSave, onExport, onDelete, theme = 'dark' }: QuestEditorProps) {
+export default function QuestEditor({ quest, onSave, onExport, onDelete, onSaveAsTemplate, isTemplateMode = false, theme = 'dark' }: QuestEditorProps) {
   const [editorMode, setEditorMode] = useState<'text' | 'visual' | 'split'>('visual');
   const [navigateToState, setNavigateToState] = useState<string | null>(null);
   const [highlightStateInVisual, setHighlightStateInVisual] = useState<string | null>(null);
@@ -250,8 +253,8 @@ export default function QuestEditor({ quest, onSave, onExport, onDelete, theme =
           </div>
         </div>
 
-        {/* Template Selector */}
-        {(editorMode === 'visual' || editorMode === 'split') && templateNames.length > 0 && (
+        {/* Template Selector (only in regular mode) */}
+        {!isTemplateMode && (editorMode === 'visual' || editorMode === 'split') && templateNames.length > 0 && (
           <select
             onChange={(e) => handleLoadTemplate(e.target.value)}
             value=""
@@ -275,63 +278,95 @@ export default function QuestEditor({ quest, onSave, onExport, onDelete, theme =
           </select>
         )}
 
-        {/* Mode Toggle */}
-        <div style={{
-          display: 'flex',
-          gap: '4px',
-          backgroundColor: 'var(--bg-tertiary)',
-          borderRadius: '4px',
-          padding: '2px'
-        }}>
+        {/* Mode Toggle (only in regular mode) */}
+        {!isTemplateMode && (
+          <div style={{
+            display: 'flex',
+            gap: '4px',
+            backgroundColor: 'var(--bg-tertiary)',
+            borderRadius: '4px',
+            padding: '2px'
+          }}>
+            <button
+              onClick={() => setEditorMode('visual')}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: editorMode === 'visual' ? 'var(--accent-primary)' : 'transparent',
+                color: 'var(--text-primary)',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 500,
+                transition: 'background-color 0.2s'
+              }}
+            >
+              Visual
+            </button>
+            <button
+              onClick={() => setEditorMode('split')}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: editorMode === 'split' ? 'var(--accent-primary)' : 'transparent',
+                color: 'var(--text-primary)',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 500,
+                transition: 'background-color 0.2s'
+              }}
+            >
+              Split
+            </button>
+            <button
+              onClick={() => setEditorMode('text')}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: editorMode === 'text' ? 'var(--accent-primary)' : 'transparent',
+                color: 'var(--text-primary)',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 500,
+                transition: 'background-color 0.2s'
+              }}
+            >
+              Text
+            </button>
+          </div>
+        )}
+
+        {/* Save as Template Button (only in regular mode, moved to left) */}
+        {!isTemplateMode && onSaveAsTemplate && (
           <button
-            onClick={() => setEditorMode('visual')}
+            onClick={() => {
+              if (quest) {
+                const templateName = prompt('Enter template name:', quest.questName);
+                if (templateName) {
+                  onSaveAsTemplate(quest.id, { ...quest, questName: templateName });
+                }
+              }
+            }}
             style={{
-              padding: '6px 12px',
-              backgroundColor: editorMode === 'visual' ? 'var(--accent-primary)' : 'transparent',
+              padding: '6px 16px',
+              backgroundColor: 'var(--accent-primary)',
               color: 'var(--text-primary)',
               border: 'none',
-              borderRadius: '3px',
+              borderRadius: '4px',
               cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 500,
-              transition: 'background-color 0.2s'
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
             }}
+            title="Save as Template"
           >
-            Visual
+            <SaveAsIcon fontSize="small" />
+            Save as Template
           </button>
-          <button
-            onClick={() => setEditorMode('split')}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: editorMode === 'split' ? 'var(--accent-primary)' : 'transparent',
-              color: 'var(--text-primary)',
-              border: 'none',
-              borderRadius: '3px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 500,
-              transition: 'background-color 0.2s'
-            }}
-          >
-            Split
-          </button>
-          <button
-            onClick={() => setEditorMode('text')}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: editorMode === 'text' ? 'var(--accent-primary)' : 'transparent',
-              color: 'var(--text-primary)',
-              border: 'none',
-              borderRadius: '3px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 500,
-              transition: 'background-color 0.2s'
-            }}
-          >
-            Text
-          </button>
-        </div>
+        )}
 
         {/* Save Button */}
         <button
@@ -351,25 +386,27 @@ export default function QuestEditor({ quest, onSave, onExport, onDelete, theme =
           {isSaving ? 'Saving...' : 'Save'}
         </button>
 
-        {/* Delete Button */}
-        <button
-          onClick={() => {
-            if (confirm(`Delete quest "${quest.questName}" (ID: ${quest.id})?`)) {
-              onDelete(quest.id);
-            }
-          }}
-          style={{
-            padding: '6px 16px',
-            backgroundColor: 'var(--accent-danger)',
-            color: 'var(--text-primary)',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '13px'
-          }}
-        >
-          Delete
-        </button>
+        {/* Delete Button (only in regular mode) */}
+        {!isTemplateMode && (
+          <button
+            onClick={() => {
+              if (confirm(`Delete quest "${quest.questName}" (ID: ${quest.id})?`)) {
+                onDelete(quest.id);
+              }
+            }}
+            style={{
+              padding: '6px 16px',
+              backgroundColor: 'var(--accent-danger)',
+              color: 'var(--text-primary)',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '13px'
+            }}
+          >
+            Delete
+          </button>
+        )}
       </div>
 
       {/* Editor Content */}

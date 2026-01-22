@@ -1,0 +1,548 @@
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Button, Alert, Snackbar, Paper, Grid, Card, CardContent, CardActions, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
+import { loadStateTemplates, StateTemplateData } from '../services/stateTemplateService';
+import StateNodeEditor from '../components/quests/StateNodeEditor';
+import { QuestState, QuestAction, QuestRule } from '../../eqf-parser';
+
+interface StateTemplatesPageProps {
+  theme: 'dark' | 'light';
+}
+
+const StateTemplatesPage: React.FC<StateTemplatesPageProps> = ({ theme }) => {
+  const [templates, setTemplates] = useState<Record<string, StateTemplateData>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [templateName, setTemplateName] = useState('');
+  const [description, setDescription] = useState('');
+  const [actions, setActions] = useState<QuestAction[]>([]);
+  const [rules, setRules] = useState<QuestRule[]>([]);
+  
+  // State editor dialog
+  const [stateEditorOpen, setStateEditorOpen] = useState(false);
+  const [currentState, setCurrentState] = useState<QuestState>({
+    name: 'TemplateState',
+    description: '',
+    actions: [],
+    rules: []
+  });
+  
+  // Load templates on mount
+  useEffect(() => {
+    loadTemplatesData();
+  }, []);
+  
+  const loadTemplatesData = async () => {
+    try {
+      setLoading(true);
+      const loadedTemplates = await loadStateTemplates();
+      setTemplates(loadedTemplates);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load state templates. Please check if templates/states directory exists.');
+      console.error('Error loading state templates:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleOpenDialog = (templateFileName?: string) => {
+    if (templateFileName && templates[templateFileName]) {
+      // Editing existing template - open state editor directly
+      const template = templates[templateFileName];
+      setEditingTemplate(templateFileName);
+      setTemplateName(templateFileName.replace('.eqf', ''));
+      
+      setCurrentState({
+        name: 'TemplateState',
+        description: template.description,
+        actions: [...template.actions],
+        rules: [...template.rules]
+      });
+      setStateEditorOpen(true);
+    } else {
+      // Adding new template - show dialog first
+      setEditingTemplate(null);
+      setTemplateName('');
+      setDescription('');
+      setActions([]);
+      setRules([]);
+      setDialogOpen(true);
+    }
+  };
+  
+  const handleOpenStateEditor = () => {
+    setCurrentState({
+      name: 'TemplateState',
+      description: description,
+      actions: [...actions],
+      rules: [...rules]
+    });
+    setStateEditorOpen(true);
+  };
+  
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingTemplate(null);
+    setTemplateName('');
+    setDescription('');
+    setActions([]);
+    setRules([]);
+  };
+  
+  const handleCloseStateEditor = () => {
+    setStateEditorOpen(false);
+  };
+  
+  const handleSaveStateEditor = async (updates: Partial<QuestState>, nameChanged: boolean, oldName: string) => {
+    // If we're editing an existing template, save it
+    if (editingTemplate) {
+      try {
+        // Get config directory
+        const configDir = await window.electronAPI.getConfigDir();
+        const statesDir = `${configDir}/templates/states`;
+        const templateFileName = `${templateName}.eqf`;
+        const templatePath = `${statesDir}/${templateFileName}`;
+        
+        // Generate template content from updated state
+        let content = `desc "${updates.description || ''}"\n`;
+        
+        (updates.actions || []).forEach(action => {
+          content += `action ${action.rawText}\n`;
+        });
+        
+        (updates.rules || []).forEach(rule => {
+          content += `rule ${rule.rawText}\n`;
+        });
+        
+        // Ensure states directory exists
+        await window.electronAPI.ensureDir(statesDir);
+        
+        // Write template file
+        await window.electronAPI.writeTextFile(templatePath, content.trim());
+        
+        // Clear cache and reload
+        await loadTemplatesData();
+        
+        setSuccessMessage('Template updated successfully!');
+      } catch (err) {
+        setError('Failed to save template. Please try again.');
+        console.error('Error saving template:', err);
+      }
+    } else {
+      // If we're creating a new template, update the form fields
+      setDescription(updates.description || '');
+      setActions(updates.actions || []);
+      setRules(updates.rules || []);
+    }
+    
+    setStateEditorOpen(false);
+    
+    // If we were creating a new template, show the dialog to set the name
+    if (!editingTemplate) {
+      setDialogOpen(true);
+    }
+  };
+  
+  const generateStateTemplateContent = (): string => {
+    let content = `desc "${description}"\n`;
+    
+    actions.forEach(action => {
+      content += `action ${action.rawText}\n`;
+    });
+    
+    rules.forEach(rule => {
+      content += `rule ${rule.rawText}\n`;
+    });
+    
+    return content.trim();
+  };
+  
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim()) {
+      setError('Template name is required');
+      return;
+    }
+    
+    if (!description.trim()) {
+      setError('Description is required');
+      return;
+    }
+    
+    try {
+      // Get config directory
+      const configDir = await window.electronAPI.getConfigDir();
+      const statesDir = `${configDir}/templates/states`;
+      const templateFileName = `${templateName}.eqf`;
+      const templatePath = `${statesDir}/${templateFileName}`;
+      
+      // Generate template content
+      const content = generateStateTemplateContent();
+      
+      // Ensure states directory exists
+      await window.electronAPI.ensureDir(statesDir);
+      
+      // Write template file
+      await window.electronAPI.writeTextFile(templatePath, content);
+      
+      // Clear cache and reload
+      await loadTemplatesData();
+      
+      setSuccessMessage(editingTemplate ? 'Template updated successfully!' : 'Template added successfully!');
+      handleCloseDialog();
+    } catch (err) {
+      setError('Failed to save template. Please try again.');
+      console.error('Error saving template:', err);
+    }
+  };
+  
+  const handleDeleteTemplate = async (templateFileName: string) => {
+    if (!confirm(`Are you sure you want to delete state template "${templateFileName}"?`)) {
+      return;
+    }
+    
+    try {
+      const configDir = await window.electronAPI.getConfigDir();
+      const statesDir = `${configDir}/templates/states`;
+      const templatePath = `${statesDir}/${templateFileName}`;
+      
+      await window.electronAPI.deleteFile(templatePath);
+      
+      // Clear cache and reload
+      await loadTemplatesData();
+      
+      setSuccessMessage('Template deleted successfully!');
+    } catch (err) {
+      setError('Failed to delete template. Please try again.');
+      console.error('Error deleting template:', err);
+    }
+  };
+  
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <Typography>Loading state templates...</Typography>
+      </Box>
+    );
+  }
+  
+  return (
+    <Box sx={{ 
+      p: 3, 
+      width: '100%',
+      height: '100%', 
+      overflow: 'auto',
+      backgroundColor: 'var(--bg-primary)',
+      color: 'var(--text-primary)'
+    }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3 
+      }}>
+        <Typography variant="h4" component="h1" sx={{ color: 'var(--text-primary)' }}>
+          State Templates
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenDialog()}
+          sx={{
+            backgroundColor: 'var(--accent-primary)',
+            '&:hover': {
+              backgroundColor: 'var(--accent-hover)'
+            }
+          }}
+        >
+          Add New Template
+        </Button>
+      </Box>
+      
+      <Typography variant="body1" sx={{ 
+        mb: 3, 
+        color: 'var(--text-secondary)' 
+      }}>
+        Manage state templates that can be used when creating quest states. Templates are stored in config/templates/states/.
+      </Typography>
+      
+      {error && (
+        <Alert severity="error" sx={{ 
+          mb: 2,
+          backgroundColor: 'var(--accent-danger)',
+          color: 'white'
+        }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      
+      <Grid container spacing={2}>
+        {Object.entries(templates).map(([fileName, template]) => (
+          <Grid item xs={12} md={6} lg={4} key={fileName}>
+            <Card sx={{
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border-primary)'
+            }}>
+              <CardContent>
+                <Typography variant="h6" component="h2" gutterBottom sx={{ color: 'var(--text-primary)' }}>
+                  {fileName.replace('.eqf', '')}
+                </Typography>
+                <Typography variant="body2" gutterBottom sx={{ color: 'var(--text-secondary)' }}>
+                  <strong>Description:</strong> {template.description}
+                </Typography>
+                <Typography variant="body2" gutterBottom sx={{ color: 'var(--text-secondary)' }}>
+                  <strong>Actions:</strong> {template.actions.length}
+                </Typography>
+                <Typography variant="body2" gutterBottom sx={{ color: 'var(--text-secondary)' }}>
+                  <strong>Rules:</strong> {template.rules.length}
+                </Typography>
+                <Box sx={{ mt: 1 }}>
+                  {template.actions.slice(0, 3).map((action, index) => (
+                    <Typography 
+                      key={index} 
+                      variant="caption" 
+                      component="div" 
+                      sx={{ 
+                        fontFamily: 'monospace',
+                        color: 'var(--text-tertiary)',
+                        fontSize: '10px'
+                      }}
+                    >
+                      {action.rawText}
+                    </Typography>
+                  ))}
+                  {template.actions.length > 3 && (
+                    <Typography variant="caption" sx={{ color: 'var(--text-tertiary)' }}>
+                      ...and {template.actions.length - 3} more
+                    </Typography>
+                  )}
+                </Box>
+              </CardContent>
+              <CardActions>
+                <Tooltip title="Edit">
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleOpenDialog(fileName)}
+                    sx={{ color: 'var(--text-primary)' }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleDeleteTemplate(fileName)}
+                    sx={{ color: 'var(--accent-danger)' }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+      
+      {Object.keys(templates).length === 0 && !loading && (
+        <Paper sx={{ 
+          p: 3, 
+          textAlign: 'center',
+          backgroundColor: 'var(--bg-secondary)',
+          border: '1px solid var(--border-primary)'
+        }}>
+          <Typography variant="body1" sx={{ color: 'var(--text-secondary)' }}>
+            No state templates found. Add your first template to get started.
+          </Typography>
+        </Paper>
+      )}
+      
+      {/* Edit/Add Dialog */}
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleCloseDialog} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: 'var(--bg-primary)',
+            color: 'var(--text-primary)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          backgroundColor: 'var(--bg-secondary)',
+          color: 'var(--text-primary)',
+          borderBottom: '1px solid var(--border-primary)'
+        }}>
+          {editingTemplate ? `Edit State Template: ${editingTemplate.replace('.eqf', '')}` : 'Add New State Template'}
+        </DialogTitle>
+        <DialogContent sx={{ backgroundColor: 'var(--bg-primary)' }}>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Template Name"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              fullWidth
+              helperText="Filename (without .eqf extension)"
+              sx={{
+                '& .MuiInputLabel-root': { color: 'var(--text-secondary)' },
+                '& .MuiInputBase-input': { color: 'var(--text-primary)' },
+                '& .MuiFormHelperText-root': { color: 'var(--text-tertiary)' },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: 'var(--border-primary)' },
+                  '&:hover fieldset': { borderColor: 'var(--border-hover)' },
+                  '&.Mui-focused fieldset': { borderColor: 'var(--accent-primary)' }
+                }
+              }}
+            />
+            
+            <TextField
+              label="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              fullWidth
+              multiline
+              rows={2}
+              helperText="State description"
+              sx={{
+                '& .MuiInputLabel-root': { color: 'var(--text-secondary)' },
+                '& .MuiInputBase-input': { color: 'var(--text-primary)' },
+                '& .MuiFormHelperText-root': { color: 'var(--text-tertiary)' },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: 'var(--border-primary)' },
+                  '&:hover fieldset': { borderColor: 'var(--border-hover)' },
+                  '&.Mui-focused fieldset': { borderColor: 'var(--accent-primary)' }
+                }
+              }}
+            />
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="subtitle2" sx={{ color: 'var(--text-primary)' }}>
+                Actions: {actions.length} | Rules: {rules.length}
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={handleOpenStateEditor}
+                sx={{
+                  color: 'var(--text-primary)',
+                  borderColor: 'var(--border-primary)',
+                  '&:hover': {
+                    borderColor: 'var(--border-hover)',
+                    backgroundColor: 'var(--bg-hover)'
+                  }
+                }}
+              >
+                Open State Editor
+              </Button>
+            </Box>
+            
+            <Paper sx={{ 
+              p: 2, 
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border-primary)'
+            }}>
+              <Typography variant="subtitle2" gutterBottom sx={{ color: 'var(--text-primary)' }}>
+                Preview:
+              </Typography>
+              <Typography variant="body2" fontFamily="monospace" sx={{ 
+                color: 'var(--text-primary)',
+                whiteSpace: 'pre-wrap',
+                fontSize: '12px'
+              }}>
+                {generateStateTemplateContent()}
+              </Typography>
+            </Paper>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ 
+          backgroundColor: 'var(--bg-secondary)',
+          borderTop: '1px solid var(--border-primary)'
+        }}>
+          <Button 
+            onClick={handleCloseDialog} 
+            startIcon={<CancelIcon />}
+            sx={{ color: 'var(--text-primary)' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveTemplate} 
+            variant="contained" 
+            startIcon={<SaveIcon />}
+            sx={{
+              backgroundColor: 'var(--accent-primary)',
+              '&:hover': {
+                backgroundColor: 'var(--accent-hover)'
+              }
+            }}
+          >
+            {editingTemplate ? 'Update Template' : 'Add Template'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* State Editor Dialog */}
+      {stateEditorOpen && (
+        <Dialog 
+          open={stateEditorOpen} 
+          onClose={handleCloseStateEditor}
+          maxWidth="lg"
+          fullWidth
+          fullScreen
+          PaperProps={{
+            sx: {
+              backgroundColor: 'var(--bg-primary)',
+              color: 'var(--text-primary)'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            borderBottom: '1px solid var(--border-primary)'
+          }}>
+            Edit State Template
+          </DialogTitle>
+          <DialogContent sx={{ backgroundColor: 'var(--bg-primary)', p: 0 }}>
+            <StateNodeEditor
+              state={currentState}
+              stateIndex={0}
+              originalStateName="TemplateState"
+              allStates={[currentState]}
+              onClose={handleCloseStateEditor}
+              onSave={handleSaveStateEditor}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+      >
+        <Alert 
+          onClose={() => setSuccessMessage(null)} 
+          severity="success"
+          sx={{
+            backgroundColor: 'var(--accent-success)',
+            color: 'white'
+          }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+};
+
+export default StateTemplatesPage;

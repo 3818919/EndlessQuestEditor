@@ -4,10 +4,18 @@ import QuestEditor from '../components/quests/QuestEditor';
 import StatusBar from '../components/StatusBar';
 import ProjectSettings from '../components/ProjectSettings';
 import CreditsPage from './CreditsPage';
+import ActionsEditorPage from './ActionsEditorPage';
+import RulesEditorPage from './RulesEditorPage';
+import QuestTemplatesPage from './QuestTemplatesPage';
+import StateTemplatesPage from './StateTemplatesPage';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ReplyIcon from '@mui/icons-material/Reply';
 import InfoIcon from '@mui/icons-material/Info';
-import QuestIcon from '../components/icons/QuestIcon';
+import CodeIcon from '@mui/icons-material/Code';
+import GavelIcon from '@mui/icons-material/Gavel';
+import DescriptionIcon from '@mui/icons-material/Description';
+import FolderIcon from '@mui/icons-material/Folder';
+import LayersIcon from '@mui/icons-material/Layers';
 import { QuestData } from '../../eqf-parser';
 
 interface NewQuestData {
@@ -58,7 +66,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
   exportQuest
 }) => {
   // UI state
-  const [activeTab, setActiveTab] = useState<'quests' | 'credits'>('quests');
+  const [activeTab, setActiveTab] = useState<'quests' | 'actions' | 'rules' | 'questTemplates' | 'stateTemplates' | 'credits'>('quests');
   const [leftPanelMinimized, setLeftPanelMinimized] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedQuestId, setSelectedQuestId] = useState<number | null>(null);
@@ -113,7 +121,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
     }
   };
 
-  const handleTabClick = (tab: 'quests' | 'credits') => {
+  const handleTabClick = (tab: 'quests' | 'actions' | 'rules' | 'questTemplates' | 'stateTemplates' | 'credits') => {
     if (tab === 'quests' && activeTab === 'quests') {
       setLeftPanelMinimized(!leftPanelMinimized);
     } else {
@@ -122,6 +130,73 @@ const EditorPage: React.FC<EditorPageProps> = ({
         setLeftPanelMinimized(false);
       }
     }
+  };
+
+  const handleSaveAsTemplate = async (questId: number, questData: QuestData) => {
+    try {
+      // Get template name from quest data (it should have been set by the prompt)
+      const templateName = questData.questName;
+      if (!templateName.trim()) {
+        alert('Template name is required');
+        return;
+      }
+      
+      // Generate EQF content from quest data
+      const eqfContent = generateEQFContent(questData);
+      
+      // Get config directory
+      const configDir = await window.electronAPI.getConfigDir();
+      const templatesDir = `${configDir}/templates`;
+      const templateFileName = `${templateName}.eqf`;
+      const templatePath = `${templatesDir}/${templateFileName}`;
+      
+      // Write template file
+      await window.electronAPI.writeTextFile(templatePath, eqfContent);
+      
+      alert(`Template "${templateName}" saved successfully!`);
+    } catch (err) {
+      alert(`Failed to save template: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      console.error('Error saving template:', err);
+    }
+  };
+  
+  const generateEQFContent = (questData: QuestData): string => {
+    let content = `quest "${questData.questName}"\nversion ${questData.version}\n`;
+    
+    if (questData.hidden) content += 'hidden\n';
+    if (questData.hiddenEnd) content += 'hiddenend\n';
+    if (questData.disabled) content += 'disabled\n';
+    if (questData.minLevel !== undefined) content += `minlevel ${questData.minLevel}\n`;
+    if (questData.maxLevel !== undefined) content += `maxlevel ${questData.maxLevel}\n`;
+    if (questData.needAdmin !== undefined) content += `needadmin ${questData.needAdmin}\n`;
+    if (questData.needClass !== undefined) content += `needclass ${questData.needClass}\n`;
+    if (questData.needQuest !== undefined) content += `needquest ${questData.needQuest}\n`;
+    
+    if (questData.startNpc && questData.startNpc.length > 0) {
+      content += `startnpc ${questData.startNpc.join(' ')}\n`;
+    }
+    
+    content += '\n';
+    
+    // Add states
+    questData.states.forEach(state => {
+      content += `State ${state.name}\n{\n`;
+      content += `    desc "${state.description}"\n`;
+      
+      // Add actions
+      state.actions.forEach(action => {
+        content += `    action ${action.rawText}\n`;
+      });
+      
+      // Add rules
+      state.rules.forEach(rule => {
+        content += `    rule ${rule.rawText}\n`;
+      });
+      
+      content += '}\n\n';
+    });
+    
+    return content.trim();
   };
 
   return (
@@ -133,7 +208,39 @@ const EditorPage: React.FC<EditorPageProps> = ({
           onClick={() => handleTabClick('quests')}
           title="Quests"
         >
-          <QuestIcon size={24} />
+          <DescriptionIcon />
+        </button>
+        
+        <button
+          className={`left-sidebar-button ${activeTab === 'actions' ? 'active' : ''}`}
+          onClick={() => handleTabClick('actions')}
+          title="Actions Editor"
+        >
+          <CodeIcon />
+        </button>
+        
+        <button
+          className={`left-sidebar-button ${activeTab === 'rules' ? 'active' : ''}`}
+          onClick={() => handleTabClick('rules')}
+          title="Rules Editor"
+        >
+          <GavelIcon />
+        </button>
+        
+        <button
+          className={`left-sidebar-button ${activeTab === 'questTemplates' ? 'active' : ''}`}
+          onClick={() => handleTabClick('questTemplates')}
+          title="Quest Templates"
+        >
+          <FolderIcon />
+        </button>
+        
+        <button
+          className={`left-sidebar-button ${activeTab === 'stateTemplates' ? 'active' : ''}`}
+          onClick={() => handleTabClick('stateTemplates')}
+          title="State Templates"
+        >
+          <LayersIcon />
         </button>
         
         <div className="sidebar-spacer"></div>
@@ -161,35 +268,46 @@ const EditorPage: React.FC<EditorPageProps> = ({
         </button>
       </div>
       
-      {activeTab === 'credits' ? (
-        <CreditsPage theme={theme} />
-      ) : (
-        <div className="main-content">
-          <div className={`left-panel ${leftPanelMinimized ? 'minimized' : ''}`}>
-            <QuestList
-              quests={questData}
-              selectedQuestId={selectedQuestId}
-              onSelectQuest={setSelectedQuestId}
-              onCreateQuest={handleCreateQuest}
-              onDeleteQuest={deleteQuest}
-              onDuplicateQuest={duplicateQuest}
-              onImportQuest={handleImportQuest}
-              currentProject={currentProject}
-              leftPanelMinimized={leftPanelMinimized}
-            />
-          </div>
-          
-          <div className="center-panel">
-            <QuestEditor
-              quest={selectedQuest}
-              onSave={updateQuest}
-              onExport={exportQuest}
-              onDelete={deleteQuest}
-              theme={theme}
-            />
-          </div>
-        </div>
-      )}
+      <div className="main-content">
+        {activeTab === 'credits' ? (
+          <CreditsPage theme={theme} />
+        ) : activeTab === 'actions' ? (
+          <ActionsEditorPage theme={theme} />
+        ) : activeTab === 'rules' ? (
+          <RulesEditorPage theme={theme} />
+        ) : activeTab === 'questTemplates' ? (
+          <QuestTemplatesPage theme={theme} />
+        ) : activeTab === 'stateTemplates' ? (
+          <StateTemplatesPage theme={theme} />
+        ) : (
+          <>
+            <div className={`left-panel ${leftPanelMinimized ? 'minimized' : ''}`}>
+              <QuestList
+                quests={questData}
+                selectedQuestId={selectedQuestId}
+                onSelectQuest={setSelectedQuestId}
+                onCreateQuest={handleCreateQuest}
+                onDeleteQuest={deleteQuest}
+                onDuplicateQuest={duplicateQuest}
+                onImportQuest={handleImportQuest}
+                currentProject={currentProject}
+                leftPanelMinimized={leftPanelMinimized}
+              />
+            </div>
+            
+            <div className="center-panel">
+              <QuestEditor
+                quest={selectedQuest}
+                onSave={updateQuest}
+                onExport={exportQuest}
+                onDelete={deleteQuest}
+                onSaveAsTemplate={handleSaveAsTemplate}
+                theme={theme}
+              />
+            </div>
+          </>
+        )}
+      </div>
       
       <StatusBar 
         isLoading={false}

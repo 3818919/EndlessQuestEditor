@@ -1,6 +1,6 @@
 {
   "name": "endless-quest-writer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Visual editor for Endless Online quest files",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -105,8 +105,7 @@
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
       "menuCategory": "Development",
-      "artifactName": "${productName} Setup ${version}.${ext}",
-      "include": "build/installer.nsh"
+      "artifactName": "${productName} Setup ${version}.${ext}"
     },
     "linux": {
       "target": "AppImage",

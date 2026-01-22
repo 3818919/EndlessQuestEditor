@@ -727,48 +727,68 @@ ipcMain.handle('config:initialize', async () => {
       }
     }
     
-    // Create templates directory and copy default templates if it doesn't exist
+    // Create templates directory and ensure default templates exist
     const templatesDir = path.join(userConfigDir, 'templates');
+    await fs.mkdir(templatesDir, { recursive: true });
+    
+    // Copy all template files from bundled config (overwrite if missing)
+    const bundledTemplatesDir = path.join(bundledConfigDir, 'templates');
     try {
-      await fs.access(templatesDir);
-    } catch {
-      await fs.mkdir(templatesDir, { recursive: true });
-      
-      // Copy all template files from bundled config
-      const bundledTemplatesDir = path.join(bundledConfigDir, 'templates');
-      try {
-        const files = await fs.readdir(bundledTemplatesDir);
-        for (const file of files) {
-          if (file.endsWith('.eqf')) {
-            const content = await fs.readFile(path.join(bundledTemplatesDir, file), 'utf-8');
-            await fs.writeFile(path.join(templatesDir, file), content, 'utf-8');
+      const files = await fs.readdir(bundledTemplatesDir);
+      for (const file of files) {
+        if (file.endsWith('.eqf')) {
+          const userTemplatePath = path.join(templatesDir, file);
+          const bundledTemplatePath = path.join(bundledTemplatesDir, file);
+          
+          try {
+            // Check if file exists in user directory
+            await fs.access(userTemplatePath);
+          } catch {
+            // File doesn't exist in user directory, copy it
+            try {
+              const content = await fs.readFile(bundledTemplatePath, 'utf-8');
+              await fs.writeFile(userTemplatePath, content, 'utf-8');
+              console.log(`Copied template: ${file}`);
+            } catch (e) {
+              console.log(`Could not copy template ${file}:`, e.message);
+            }
           }
         }
-      } catch (e) {
-        console.log('Could not copy bundled templates:', e.message);
       }
+    } catch (e) {
+      console.log('Could not access bundled templates directory:', e.message);
     }
     
-    // Create templates/states directory and copy state templates if it doesn't exist
+    // Create templates/states directory and ensure state templates exist
     const statesDir = path.join(userConfigDir, 'templates', 'states');
+    await fs.mkdir(statesDir, { recursive: true });
+    
+    // Copy all state template files from bundled config (overwrite if missing)
+    const bundledStatesDir = path.join(bundledConfigDir, 'templates', 'states');
     try {
-      await fs.access(statesDir);
-    } catch {
-      await fs.mkdir(statesDir, { recursive: true });
-      
-      // Copy all state template files from bundled config
-      const bundledStatesDir = path.join(bundledConfigDir, 'templates', 'states');
-      try {
-        const files = await fs.readdir(bundledStatesDir);
-        for (const file of files) {
-          if (file.endsWith('.eqf')) {
-            const content = await fs.readFile(path.join(bundledStatesDir, file), 'utf-8');
-            await fs.writeFile(path.join(statesDir, file), content, 'utf-8');
+      const files = await fs.readdir(bundledStatesDir);
+      for (const file of files) {
+        if (file.endsWith('.eqf')) {
+          const userStatePath = path.join(statesDir, file);
+          const bundledStatePath = path.join(bundledStatesDir, file);
+          
+          try {
+            // Check if file exists in user directory
+            await fs.access(userStatePath);
+          } catch {
+            // File doesn't exist in user directory, copy it
+            try {
+              const content = await fs.readFile(bundledStatePath, 'utf-8');
+              await fs.writeFile(userStatePath, content, 'utf-8');
+              console.log(`Copied state template: ${file}`);
+            } catch (e) {
+              console.log(`Could not copy state template ${file}:`, e.message);
+            }
           }
         }
-      } catch (e) {
-        console.log('Could not copy bundled state templates:', e.message);
       }
+    } catch (e) {
+      console.log('Could not access bundled states templates directory:', e.message);
     }
     
     return { success: true, configDir: userConfigDir };

@@ -154,7 +154,7 @@ export default function SplashScreen({ isVisible, status, progress, onComplete }
             textAlign: 'center'
           }}
         >
-          Version {window.electronAPI?.getVersion?.() || '1.0.0'}
+          Version 1.0.0
         </Typography>
       </Box>
 
