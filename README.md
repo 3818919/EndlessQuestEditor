@@ -229,6 +229,7 @@ Main
 State Begin
 {
     desc "Starting state description"
+
     action AddNpcText(1, "Hello, adventurer!");
     action ShowHint("Talk to the NPC to begin.");
     rule TalkedToNpc(1) goto QuestAccepted
@@ -237,6 +238,7 @@ State Begin
 State QuestAccepted
 {
     desc "Player accepted the quest"
+
     action AddNpcText(1, "Bring me 5 apples.");
     action SetQuestState("Collect 5 Apples");
     rule GotItems(100, 5) goto QuestComplete
@@ -245,6 +247,7 @@ State QuestAccepted
 State QuestComplete
 {
     desc "Quest completion"
+
     action AddNpcText(1, "Thank you!");
     action RemoveItem(100, 5);
     action GiveExp(500);
@@ -313,9 +316,6 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 ```
 MIT License
-
-Copyright (c) 2024 CoderDan (Original OakTree)
-Copyright (c) 2024 Vexx (Endless Quest Writer modifications)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
