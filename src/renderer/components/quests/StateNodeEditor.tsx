@@ -691,7 +691,7 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
               >
                 <option value="">-- Apply State Template --</option>
                 {Object.keys(stateTemplates).map(name => (
-                  <option key={name} value={name.replace(/\.eqf$/i, '')}>{name.replace(/\.eqf$/i, '')}</option>
+                  <option key={name} value={name}>{name.replace(/\.eqf$/i, '')}</option>
                 ))}
               </select>
               {onSaveAsTemplate && (

@@ -77,6 +77,9 @@
 - **Keyboard Shortcuts** — Quick save with Ctrl+S
 - **Status Indicators** — See last saved time and quest statistics
 
+[![f4kpmPe.md.gif](https://iili.io/f4kpmPe.md.gif)](https://freeimage.host/i/f4kpmPe)
+[![f4kpO9R.md.gif](https://iili.io/f4kpO9R.md.gif)](https://freeimage.host/i/f4kpO9R)
+
 ---
 
 ## Installation
