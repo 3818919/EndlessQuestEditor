@@ -31,51 +31,73 @@
 
 ---
 
-## Features
+# Endless Quest Writer
 
-### 🎨 Visual Quest Editor
+A quest creation tool for Endless Online servers.
+
+---
+
+## ✨ Features
+
+### Visual Quest Editor
 - **Node-Based Flow Diagram** — Design quest flows visually with drag-and-drop states
 - **Auto-Layout** — Automatic graph layout using the Dagre algorithm
-- **State Management** — Create, edit, and delete quest states with ease
-- **Visual Connections** — See rule transitions between states at a glance
 - **Click-to-Edit** — Double-click any state node to edit its properties
+- **Visual Connections** — See rule transitions between states at a glance
 
-### 📝 Text Editor
+### State Editor
+- **Unified Actions & Rules** — Actions and rules displayed in a single section with color-coded borders (green for actions, blue for rules)
+- **Drag-and-Drop Reordering** — Interleave actions and rules in any order with persistent ordering
+- **Save as Template** — Quickly save states as reusable templates
+- **Load Template** - Quickly load from a state template 
+- **Reset State** — Clear all actions/rules and start fresh
+
+### Text Editor
 - **Monaco Editor** — Professional code editor with syntax highlighting
 - **EQF Language Support** — Custom syntax highlighting for quest files
 - **Auto-Completion** — IntelliSense for actions and rules
 - **Go-to Navigation** — Click state references to jump to definitions
 - **Split View** — Edit in both visual and text modes simultaneously
 
-### 📋 Quest Management
+### Quest Management
 - **Quest List** — Browse and search all quests in your project
 - **Quick Create** — Create new quests with custom ID, name, and version
-- **Templates** — Start from pre-built quest templates (Fetch, Kill, Delivery, etc.)
-- **Duplicate** — Clone existing quests as a starting point
-- **Import/Export** — Import external `.eqf` files or export quests
 
-### ⚙️ Quest Properties
-- **Metadata Editor** — Edit quest name, version, and hidden status
-- **Auto-Save** — Changes save automatically when using the visual editor
-- **Manual Save** — Save button for explicit control
+### Template System
+- **Quest Templates** — Browse, create, and manage reusable quest templates (Fetch, Kill, Delivery, etc.)
+- **State Templates** — Define and organize state templates for common quest patterns
+- **Custom Templates** — All templates are saved as `.eqf` files in `~/.EndlessQuestWriter/config/`
 
-### 🔧 Customization
-- **External Config Files** — Actions and rules defined in editable `.ini` files
-- **Custom Templates** — Add your own quest templates as `.eqf` files
-- **User Directory** — Config files stored in `~/.EndlessQuestWriter/config/`
-- **Hot Reload** — Changes take effect on next application launch
+### Configuration Editors
+- **Actions Editor** — Edit server actions configuration directly within the application
+- **Rules Editor** — Modify server rules configuration with a dedicated editor interface
+- **Drag-and-Drop Reordering** — Reorder items with changes persisted to config files
 
-### 🎯 Project System
+### Project System
 - **Server Linking** — Link directly to your game server's directory
 - **Auto-Discovery** — Automatically finds quests in `data/quests/`
-- **5-Digit Naming** — Quest files use standard naming (`00001.eqf` to `99999.eqf`)
+- **5-Digit Auto Naming** — Quest files use standard naming (`00001.eqf` to `99999.eqf`)
 - **Multiple Projects** — Switch between different server directories
 
-### 🌙 User Experience
+### User Experience
 - **Dark/Light Theme** — Toggle between themes in settings
-- **Responsive Layout** — Works on various screen sizes
+- **Auto-Save** — Changes save automatically when using the visual editor
 - **Keyboard Shortcuts** — Quick save with Ctrl+S
 - **Status Indicators** — See last saved time and quest statistics
+
+![example.gif](https://endless-memories.net/images/example.gif)
+---
+
+## Download
+
+### <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/windows8/windows8-original.svg" width="20" height="20"> Windows
+- [Download for Windows](https://github.com/3818919/EndlessQuestWriter/releases/download/v1.2.0/Endless.Quest.Writer.Setup.1.2.0.exe)
+
+### <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apple/apple-original.svg" width="20" height="20"> macOS
+- [Download for macOS](https://github.com/3818919/EndlessQuestWriter/releases/download/v1.2.0/Endless.Quest.Writer-1.2.0.dmg)
+
+### <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" width="20" height="20"> Linux
+- [Download for Linux](https://github.com/3818919/EndlessQuestWriter/releases/download/v1.2.0/Endless.Quest.Writer-1.2.0.AppImage)
 
 ---
 
