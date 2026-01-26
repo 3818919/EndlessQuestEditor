@@ -20,7 +20,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Platform">
   <img src="https://img.shields.io/badge/electron-28.0.0-47848F?logo=electron" alt="Electron">
-  <img src="https://img.shields.io/badge/react-18-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/typescript-5.3-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
