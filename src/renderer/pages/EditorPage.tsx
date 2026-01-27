@@ -300,7 +300,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
         ) : activeTab === 'questTemplates' ? (
           <QuestTemplatesPage theme={theme} />
         ) : activeTab === 'stateTemplates' ? (
-          <StateTemplatesPage theme={theme} />
+          <StateTemplatesPage theme={theme} projectPath={currentProject} />
         ) : (
           <>
             <div className={`left-panel ${leftPanelMinimized ? 'minimized' : ''}`}>
@@ -327,6 +327,7 @@ const EditorPage: React.FC<EditorPageProps> = ({
                 onSaveStateAsTemplate={handleSaveStateAsTemplate}
                 templateSaveStatus={templateSaveStatus}
                 theme={theme}
+                projectPath={currentProject}
               />
             </div>
           </>

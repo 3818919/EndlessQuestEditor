@@ -11,9 +11,10 @@ import { QuestState, QuestAction, QuestRule } from '../../eqf-parser';
 
 interface StateTemplatesPageProps {
   theme: 'dark' | 'light';
+  projectPath?: string;
 }
 
-const StateTemplatesPage: React.FC<StateTemplatesPageProps> = ({ theme }) => {
+const StateTemplatesPage: React.FC<StateTemplatesPageProps> = ({ theme, projectPath }) => {
   const [templates, setTemplates] = useState<Record<string, StateTemplateData>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -435,6 +436,7 @@ const StateTemplatesPage: React.FC<StateTemplatesPageProps> = ({ theme }) => {
               onClose={handleCloseStateEditor}
               onSave={handleSaveStateEditor}
               isTemplateMode={true}
+              projectPath={projectPath}
             />
           </DialogContent>
         </Dialog>

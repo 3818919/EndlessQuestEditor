@@ -18,7 +18,8 @@ interface StateNodeEditorProps {
   onSave: (updates: Partial<QuestState>, nameChanged: boolean, oldName: string) => void;
   onCreateState?: (stateName: string) => void;
   isTemplateMode?: boolean; 
-  onSaveAsTemplate?: (state: QuestState) => void; 
+  onSaveAsTemplate?: (state: QuestState) => void;
+  projectPath?: string;
 }
 
 const DEFAULT_ACTION_TYPES = [
@@ -102,7 +103,7 @@ function signatureHasSemicolon(signature: string): boolean {
   return clean.endsWith(';');
 }
 
-export default function StateNodeEditor({ state, stateIndex, originalStateName, allStates, onClose, onSave, onCreateState, isTemplateMode = false, onSaveAsTemplate }: StateNodeEditorProps) {
+export default function StateNodeEditor({ state, stateIndex, originalStateName, allStates, onClose, onSave, onCreateState, isTemplateMode = false, onSaveAsTemplate, projectPath }: StateNodeEditorProps) {
   const buildItemsList = (s: QuestState): StateItem[] => {
     if (s.items && s.items.length > 0) {
       return [...s.items];
@@ -209,7 +210,7 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
   };
 
   useEffect(() => {
-    loadConfig().then(loadedConfig => {
+    loadConfig(projectPath).then(loadedConfig => {
       setConfig(loadedConfig);
       
       if (Object.keys(loadedConfig.actions).length > 0) {
@@ -241,7 +242,7 @@ export default function StateNodeEditor({ state, stateIndex, originalStateName, 
     loadStateTemplates().then(templates => {
       setStateTemplates(templates);
     });
-  }, []);
+  }, [projectPath]);
 
   const generateActionRawText = (action: QuestAction): string => {
     const paramInfos = actionParams[action.type] || [];

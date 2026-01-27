@@ -16,9 +16,10 @@ interface QuestEditorProps {
   templateSaveStatus?: 'idle' | 'saving' | 'saved' | 'error';
   isTemplateMode?: boolean;
   theme?: 'dark' | 'light';
+  projectPath?: string;
 }
 
-export default function QuestEditor({ quest, onSave, onExport, onDelete, onSaveAsTemplate, onSaveStateAsTemplate, templateSaveStatus = 'idle', isTemplateMode = false, theme = 'dark' }: QuestEditorProps) {
+export default function QuestEditor({ quest, onSave, onExport, onDelete, onSaveAsTemplate, onSaveStateAsTemplate, templateSaveStatus = 'idle', isTemplateMode = false, theme = 'dark', projectPath }: QuestEditorProps) {
   const [editorMode, setEditorMode] = useState<'text' | 'visual' | 'split'>('visual');
   const [navigateToState, setNavigateToState] = useState<string | null>(null);
   const [highlightStateInVisual, setHighlightStateInVisual] = useState<string | null>(null);
@@ -421,7 +422,7 @@ export default function QuestEditor({ quest, onSave, onExport, onDelete, onSaveA
         {editorMode === 'text' ? (
           <QuestTextEditor quest={quest} onSave={handleSave} navigateToState={navigateToState} onNavigateToVisual={handleNavigateToVisual} theme={theme} />
         ) : editorMode === 'visual' ? (
-          <QuestFlowDiagram quest={quest} onQuestChange={handleVisualChange} onNavigateToState={handleNavigateToState} highlightState={highlightStateInVisual} onSaveStateAsTemplate={onSaveStateAsTemplate} />
+          <QuestFlowDiagram quest={quest} onQuestChange={handleVisualChange} onNavigateToState={handleNavigateToState} highlightState={highlightStateInVisual} onSaveStateAsTemplate={onSaveStateAsTemplate} projectPath={projectPath} />
         ) : (
           // Split view
           <div style={{ display: 'flex', height: '100%', gap: '1px', backgroundColor: 'var(--border-primary)' }}>
@@ -429,7 +430,7 @@ export default function QuestEditor({ quest, onSave, onExport, onDelete, onSaveA
               <QuestTextEditor quest={quest} onSave={handleSave} navigateToState={navigateToState} onNavigateToVisual={handleNavigateToVisual} theme={theme} />
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <QuestFlowDiagram quest={quest} onQuestChange={handleVisualChange} onNavigateToState={handleNavigateToState} highlightState={highlightStateInVisual} onSaveStateAsTemplate={onSaveStateAsTemplate} />
+              <QuestFlowDiagram quest={quest} onQuestChange={handleVisualChange} onNavigateToState={handleNavigateToState} highlightState={highlightStateInVisual} onSaveStateAsTemplate={onSaveStateAsTemplate} projectPath={projectPath} />
             </div>
           </div>
         )}
